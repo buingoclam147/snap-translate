@@ -1,0 +1,66 @@
+import Foundation
+#if os(macOS)
+import AppKit
+import Vision
+
+class OCRService {
+    static let shared = OCRService()
+    
+    /// Extract text from an image using Vision Framework
+    /// - Parameter image: NSImage to process
+    /// - Returns: Extracted text string
+    func extractText(from image: NSImage) -> String {
+        guard let cgImage = image.toCGImage() else {
+            print("❌ Failed to convert NSImage to CGImage")
+            return ""
+        }
+        
+        let request = VNRecognizeTextRequest()
+        // Support English and Vietnamese
+        request.recognitionLanguages = ["en", "vi"]
+        request.usesLanguageCorrection = true  // Better accuracy
+        
+        // Set revision for better results
+        if #available(macOS 13.0, *) {
+            request.revision = VNRecognizeTextRequestRevision2
+        }
+        
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        
+        do {
+            try handler.perform([request])
+            
+            guard let observations = request.results as [VNRecognizedTextObservation]? else {
+                print("❌ No text observations found")
+                return ""
+            }
+            
+            // Extract text with confidence logging
+            var recognizedStrings: [String] = []
+            for observation in observations {
+                if let topCandidate = observation.topCandidates(1).first {
+                    recognizedStrings.append(topCandidate.string)
+                    let confidence = Int(observation.confidence * 100)
+                    print("   • Confidence: \(confidence)% - \(topCandidate.string.prefix(50))")
+                }
+            }
+            
+            let extractedText = recognizedStrings.joined(separator: "\n")
+            print("✅ Vision OCR completed: extracted \(recognizedStrings.count) text blocks")
+            print("📊 Languages: English + Vietnamese supported")
+            return extractedText
+        } catch {
+            print("❌ OCR error: \(error.localizedDescription)")
+            return ""
+        }
+    }
+}
+
+// Helper extension to convert NSImage to CGImage
+extension NSImage {
+    func toCGImage() -> CGImage? {
+        var proposedRect = CGRect(origin: .zero, size: self.size)
+        return self.cgImage(forProposedRect: &proposedRect, context: nil, hints: nil)
+    }
+}
+#endif

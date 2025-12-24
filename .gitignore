@@ -1,0 +1,68 @@
+# =========================
+# macOS
+# =========================
+.DS_Store
+
+# =========================
+# Xcode
+# =========================
+build/
+DerivedData/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# User-specific Xcode settings
+xcuserdata/
+
+# =========================
+# Swift Package Manager
+# =========================
+.build/
+Packages/
+Package.resolved
+
+# =========================
+# CocoaPods (nếu dùng)
+# =========================
+Pods/
+
+# =========================
+# Carthage (nếu dùng)
+# =========================
+Carthage/Build/
+
+# =========================
+# Fastlane (nếu dùng)
+# =========================
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# =========================
+# Logs & temp
+# =========================
+*.log
+*.tmp
+*.swp
+
+# =========================
+# App build output
+# =========================
+*.app
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.local
+.env.production
