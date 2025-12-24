@@ -8,6 +8,20 @@ class ResultViewModel: ObservableObject {
     
     @Published var capturedImage: NSImage?
     @Published var extractedText: String = ""           // Original text (English)
+    @Published var editedEnglishText: String = "" {     // Editable English text
+        didSet {
+            // Cancel previous debounce timer
+            debounceTimer?.invalidate()
+            
+            // Only translate if text actually changed
+            if editedEnglishText != oldValue && !editedEnglishText.isEmpty {
+                // Start new debounce timer (2 seconds)
+                debounceTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] _ in
+                    self?.translateExtractedText(self?.editedEnglishText ?? "")
+                }
+            }
+        }
+    }
     @Published var translatedText: String = ""          // Translated text
     @Published var isProcessing: Bool = false
     @Published var isTranslating: Bool = false
@@ -18,13 +32,14 @@ class ResultViewModel: ObservableObject {
             // Save preference
             UserDefaults.standard.set(selectedLanguage, forKey: "preferredLanguage")
             // Re-translate with new language
-            if !extractedText.isEmpty {
-                translateExtractedText(extractedText)
+            if !editedEnglishText.isEmpty {
+                translateExtractedText(editedEnglishText)
             }
         }
     }
     
     private var resultWindow: ResultWindow?
+    private var debounceTimer: Timer?
     
     private init() {
         // Load saved language preference
@@ -48,6 +63,7 @@ class ResultViewModel: ObservableObject {
             
             DispatchQueue.main.async {
                 self?.extractedText = text
+                self?.editedEnglishText = text  // Initialize editable text
                 self?.isProcessing = false
                 self?.showResult = true
                 
@@ -60,7 +76,7 @@ class ResultViewModel: ObservableObject {
                     print("📄 Extracted text preview: \(text.prefix(100))...")
                 }
                 
-                // Phase 2: Trigger translation
+                // Trigger translation
                 self?.translateExtractedText(text)
                 
                 // Show result window
@@ -100,7 +116,9 @@ class ResultViewModel: ObservableObject {
         showResult = false
         capturedImage = nil
         extractedText = ""
+        editedEnglishText = ""
         translatedText = ""
+        debounceTimer?.invalidate()
         print("✖️ Result closed")
     }
     

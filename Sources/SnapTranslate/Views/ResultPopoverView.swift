@@ -69,20 +69,29 @@ struct ResultPopoverView: View {
                         }
                         .padding(.bottom, 4)
                         
-                        ScrollView {
-                            if viewModel.extractedText.isEmpty {
+                        ZStack {
+                            if viewModel.editedEnglishText.isEmpty {
                                 Text("Extracting text...")
                                     .font(.system(.caption, design: .monospaced))
                                     .foregroundColor(.gray)
                                     .padding(12)
                                     .frame(maxWidth: .infinity, alignment: .topLeading)
-                            } else {
-                                Text(viewModel.extractedText)
-                                    .font(.system(.body, design: .monospaced))
-                                    .lineSpacing(4)
-                                    .padding(10)
-                                    .frame(maxWidth: .infinity, alignment: .topLeading)
                             }
+                            
+                            TextEditor(text: $viewModel.editedEnglishText)
+                                .font(.system(.body, design: .monospaced))
+                                .lineSpacing(4)
+                                .opacity(viewModel.editedEnglishText.isEmpty ? 0.5 : 1.0)
+                                .padding(10)
+                                .background(Color(NSColor.textBackgroundColor))
+                                .cornerRadius(6)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(
+                                            Color.blue.opacity(viewModel.editedEnglishText != viewModel.extractedText ? 0.5 : 0),
+                                            lineWidth: 2
+                                        )
+                                )
                         }
                         .background(Color(NSColor.textBackgroundColor))
                         .cornerRadius(6)
@@ -172,6 +181,11 @@ struct ResultPopoverView: View {
         pasteboard.setString(viewModel.translatedText, forType: .string)
         #endif
         print("📋 Translated text copied to clipboard")
+    }
+    
+    // Helper to show if text was edited
+    private func isTextEdited() -> Bool {
+        return viewModel.editedEnglishText != viewModel.extractedText
     }
 }
 
