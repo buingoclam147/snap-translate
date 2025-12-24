@@ -10,45 +10,23 @@ struct ResultPopoverView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            HStack {
-                HStack(spacing: 8) {
-                    Image(systemName: "text.viewfinder")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.blue)
-                    
-                    Text("OCR & Translation")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                }
-                
-                Spacer()
-                
-                if viewModel.isProcessing || viewModel.isTranslating {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                }
-                
-                Button(action: { viewModel.closeResult() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(.gray)
-                }
-                .buttonStyle(.plain)
-                .help("Close (Cmd+W)")
-            }
-            .padding(12)
-            .background(Color(NSColor.controlBackgroundColor))
+            // Removed header - now minimal design
             
             // Content: Image on top, Text below
             VStack(spacing: 12) {
                 // Top: Image preview (responsive height)
                 VStack(spacing: 4) {
-                    Text("Screenshot")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 8)
+                    HStack(spacing: 6) {
+                        Image(systemName: "text.viewfinder")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.blue)
+                        
+                        Text("Screenshot")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 8)
                     
                     if let image = viewModel.capturedImage {
                         Image(nsImage: image)
@@ -89,6 +67,7 @@ struct ResultPopoverView: View {
                             
                             Spacer()
                         }
+                        .padding(.bottom, 4)
                         
                         ScrollView {
                             if viewModel.extractedText.isEmpty {
@@ -110,12 +89,20 @@ struct ResultPopoverView: View {
                     }
                     .frame(maxWidth: .infinity)
                     
-                    // Right: Vietnamese
+                    // Right: Translated text
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("Vietnamese")
+                            Text("Translation")
                                 .font(.caption)
                                 .fontWeight(.semibold)
+                            
+                            Picker("", selection: $viewModel.selectedLanguage) {
+                                ForEach(Array(TranslationService.shared.supportedLanguages.sorted { $0.value < $1.value }), id: \.key) { code, name in
+                                    Text(name).tag(code)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .frame(maxWidth: 120)
                             
                             if viewModel.isTranslating {
                                 ProgressView()
@@ -149,7 +136,7 @@ struct ResultPopoverView: View {
             }
             .padding(12)
             
-            // Footer: Buttons
+            // Footer: Buttons (only 2 buttons)
             Divider()
             
             HStack(spacing: 10) {
@@ -162,19 +149,10 @@ struct ResultPopoverView: View {
                 }
                 .buttonStyle(.bordered)
                 
-                Button(action: { copyVietnameseToClipboard() }) {
+                Button(action: { copyTranslatedToClipboard() }) {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.on.doc")
-                        Text("Copy VI")
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                
-                Button(action: { viewModel.closeResult() }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "xmark")
-                        Text("Close")
+                        Text("Copy Translation")
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -187,13 +165,13 @@ struct ResultPopoverView: View {
         .background(Color(NSColor.windowBackgroundColor))
     }
     
-    private func copyVietnameseToClipboard() {
+    private func copyTranslatedToClipboard() {
         #if os(macOS)
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(viewModel.translatedText, forType: .string)
         #endif
-        print("📋 Vietnamese text copied to clipboard")
+        print("📋 Translated text copied to clipboard")
     }
 }
 

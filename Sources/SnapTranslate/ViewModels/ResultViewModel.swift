@@ -8,21 +8,29 @@ class ResultViewModel: ObservableObject {
     
     @Published var capturedImage: NSImage?
     @Published var extractedText: String = ""           // Original text (English)
-    @Published var translatedText: String = ""          // Translated text (Vietnamese) - Phase 2
+    @Published var translatedText: String = ""          // Translated text
     @Published var isProcessing: Bool = false
-    @Published var isTranslating: Bool = false          // Phase 2: Translation loading state
+    @Published var isTranslating: Bool = false
     @Published var showResult: Bool = false
     @Published var errorMessage: String?
+    @Published var selectedLanguage: String = "vi" {    // Default to Vietnamese
+        didSet {
+            // Save preference
+            UserDefaults.standard.set(selectedLanguage, forKey: "preferredLanguage")
+            // Re-translate with new language
+            if !extractedText.isEmpty {
+                translateExtractedText(extractedText)
+            }
+        }
+    }
     
     private var resultWindow: ResultWindow?
     
     private init() {
-        // Observe showResult changes to show/hide window
-        observeShowResult()
-    }
-    
-    private func observeShowResult() {
-        // This will be called whenever showResult changes
+        // Load saved language preference
+        if let saved = UserDefaults.standard.string(forKey: "preferredLanguage") {
+            selectedLanguage = saved
+        }
     }
     
     func processImage(_ image: NSImage) {
@@ -61,17 +69,17 @@ class ResultViewModel: ObservableObject {
         }
     }
     
-    // Phase 2: Translate extracted text to Vietnamese
+    // Translate extracted text to selected language
     private func translateExtractedText(_ englishText: String) {
         guard !englishText.isEmpty else { return }
         
         isTranslating = true
         
         Task {
-            let vietnameseText = await TranslationService.shared.translateToVietnamese(englishText)
+            let translatedText = await TranslationService.shared.translate(englishText, to: selectedLanguage)
             
             DispatchQueue.main.async { [weak self] in
-                self?.translatedText = vietnameseText
+                self?.translatedText = translatedText
                 self?.isTranslating = false
                 print("✅ Translation displayed")
             }

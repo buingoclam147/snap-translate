@@ -21,7 +21,7 @@ struct ContentView: View {
                     .font(.system(size: 14, weight: .regular))
                     .foregroundColor(.gray)
             }
-            .padding(.bottom, 24)
+            .padding(.bottom, 16)
             
             // Buttons
             VStack(spacing: 12) {
@@ -34,7 +34,7 @@ struct ContentView: View {
                         Image(systemName: "camera.fill")
                             .font(.system(size: 16, weight: .semibold))
                         
-                        Text("Capture & Translate")
+                        Text("Capture & Translate (Cmd+Ctrl+C)")
                             .font(.system(size: 16, weight: .semibold))
                         
                         Spacer()
@@ -66,18 +66,6 @@ struct ContentView: View {
             .padding(.horizontal, 32)
             
             Spacer()
-            
-            // Footer
-            VStack(spacing: 4) {
-                Text("Press Cmd+Ctrl+C to capture anywhere")
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(.gray)
-                
-                Text("Phase 2: UI + Translation")
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundColor(.gray.opacity(0.6))
-            }
-            .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(NSColor.windowBackgroundColor))

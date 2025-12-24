@@ -7,12 +7,30 @@ class TranslationService {
     // Format: https://api.mymemory.translated.net/get?q=text&langpair=en|vi
     private let apiURL = "https://api.mymemory.translated.net/get"
     
+    // Supported language pairs (source=English, target=various)
+    let supportedLanguages: [String: String] = [
+        "vi": "Vietnamese",
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German",
+        "it": "Italian",
+        "pt": "Portuguese",
+        "ru": "Russian",
+        "ja": "Japanese",
+        "ko": "Korean",
+        "zh": "Chinese",
+        "th": "Thai",
+        "ar": "Arabic",
+        "hi": "Hindi",
+        "id": "Indonesian"
+    ]
+    
     private init() {
-        print("✅ TranslationService initialized - EN→VI via MyMemory API")
+        print("✅ TranslationService initialized - Multi-language via MyMemory API")
     }
     
-    /// Translate English text to Vietnamese using MyMemory API
-    func translateToVietnamese(_ text: String) async -> String {
+    /// Translate English text to target language using MyMemory API
+    func translate(_ text: String, to languageCode: String) async -> String {
         guard !text.isEmpty else { return "" }
         
         do {
@@ -20,7 +38,7 @@ class TranslationService {
             var components = URLComponents(string: apiURL)!
             components.queryItems = [
                 URLQueryItem(name: "q", value: text),
-                URLQueryItem(name: "langpair", value: "en|vi")
+                URLQueryItem(name: "langpair", value: "en|\(languageCode)")
             ]
             
             guard let url = components.url else {
@@ -61,7 +79,7 @@ class TranslationService {
                 // Decode URL-encoded text (MyMemory API returns encoded text)
                 let decodedText = translatedText.removingPercentEncoding ?? translatedText
                 
-                print("✅ Translation completed: \(text.prefix(50))... → \(decodedText.prefix(50))...")
+                print("✅ Translation to \(languageCode) completed: \(text.prefix(50))... → \(decodedText.prefix(50))...")
                 return decodedText
             }
             
