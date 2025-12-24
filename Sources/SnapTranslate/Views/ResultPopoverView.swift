@@ -145,25 +145,46 @@ struct ResultPopoverView: View {
             }
             .padding(12)
             
-            // Footer: Buttons (only 2 buttons)
+            // Footer: Buttons
             Divider()
             
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
+                // Copy EN
                 Button(action: { viewModel.copyToClipboard() }) {
-                    HStack(spacing: 6) {
+                    VStack(spacing: 2) {
                         Image(systemName: "doc.on.doc")
+                            .font(.system(size: 16, weight: .semibold))
                         Text("Copy EN")
+                            .font(.caption)
                     }
                     .frame(maxWidth: .infinity)
+                    .padding(10)
                 }
                 .buttonStyle(.bordered)
                 
+                // Copy Translation
                 Button(action: { copyTranslatedToClipboard() }) {
-                    HStack(spacing: 6) {
+                    VStack(spacing: 2) {
                         Image(systemName: "doc.on.doc")
+                            .font(.system(size: 16, weight: .semibold))
                         Text("Copy Translation")
+                            .font(.caption)
                     }
                     .frame(maxWidth: .infinity)
+                    .padding(10)
+                }
+                .buttonStyle(.bordered)
+                
+                // Read Content (merged button for both EN and Translation)
+                Button(action: { toggleReadContent() }) {
+                    VStack(spacing: 2) {
+                        Image(systemName: SpeechService.shared.isSpeaking ? "speaker.wave.2.fill" : "speaker.wave.2")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text("Read")
+                            .font(.caption)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(10)
                 }
                 .buttonStyle(.bordered)
                 .keyboardShortcut("w")
@@ -186,6 +207,15 @@ struct ResultPopoverView: View {
     // Helper to show if text was edited
     private func isTextEdited() -> Bool {
         return viewModel.editedEnglishText != viewModel.extractedText
+    }
+    
+    private func toggleReadContent() {
+        if SpeechService.shared.isSpeaking {
+            SpeechService.shared.stopSpeaking()
+        } else {
+            // Read current selected content (English first, then alternate to translation on next click)
+            SpeechService.shared.speak(viewModel.editedEnglishText, languageCode: "en")
+        }
     }
 }
 
