@@ -10,6 +10,7 @@ class CaptureViewModel: NSObject, ObservableObject {
     @Published var capturedImage: NSImage?
     
     private var captureWindow: NSWindow?
+    private var escapeMonitor: Any?
     
     override init() {
         super.init()
@@ -73,12 +74,29 @@ class CaptureViewModel: NSObject, ObservableObject {
         captureWindow?.makeFirstResponder(overlayView)
         NSApplication.shared.activate(ignoringOtherApps: true)
         
+        // Add global ESC key monitor
+        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 {  // ESC key
+                LogService.shared.info("🛑 ESC pressed (global monitor)")
+                self?.endCapture()
+                return nil  // Consume the event
+            }
+            return event
+        }
+        
         LogService.shared.info("✅ Overlay ready - drag to select")
     }
     
     func endCapture() {
         LogService.shared.debug("🏁 endCapture() called")
         isCapturing = false
+        
+        // Remove escape monitor
+        if let monitor = escapeMonitor {
+            NSEvent.removeMonitor(monitor)
+            escapeMonitor = nil
+            LogService.shared.debug("  ESC monitor removed")
+        }
         
         if let window = captureWindow {
             window.orderOut(nil)

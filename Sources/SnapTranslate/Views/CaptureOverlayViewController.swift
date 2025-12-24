@@ -16,6 +16,11 @@ class SimpleOverlayView: NSView {
         return true
     }
     
+    override func resignFirstResponder() -> Bool {
+        // Keep first responder even if focus tries to change
+        return false
+    }
+    
     // MOUSE DOWN
     override func mouseDown(with event: NSEvent) {
         // Convert window coordinates to screen coordinates
