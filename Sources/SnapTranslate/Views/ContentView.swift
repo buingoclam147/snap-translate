@@ -10,11 +10,21 @@ struct ContentView: View {
             
             // Logo/Title
             VStack(spacing: 8) {
-                Image(systemName: "text.viewfinder")
-                    .font(.system(size: 48, weight: .semibold))
-                    .foregroundColor(.blue)
+                // Load từ Resources folder trong app bundle
+                if let resourcePath = Bundle.main.resourcePath,
+                   let nsImage = NSImage(contentsOfFile: "\(resourcePath)/ESnap.png") {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 120, height: 120)
+                } else {
+                    // Fallback nếu không tìm thấy
+                    Image(systemName: "text.viewfinder")
+                        .font(.system(size: 48, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
                 
-                Text("SnapTranslate")
+                Text("ESnap")
                     .font(.system(size: 32, weight: .bold))
                 
                 Text("Instant OCR & Translation")

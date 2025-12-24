@@ -2,16 +2,16 @@
 import PackageDescription
 
 let package = Package(
-    name: "SnapTranslate",
+    name: "ESnap",
     platforms: [
         .macOS(.v12)
     ],
     products: [
-        .executable(name: "SnapTranslate", targets: ["SnapTranslate"])
+        .executable(name: "ESnap", targets: ["ESnap"])
     ],
     targets: [
         .executableTarget(
-            name: "SnapTranslate",
+            name: "ESnap",
             dependencies: [],
             linkerSettings: [
                 .linkedFramework("AppKit"),

@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 print("\n" + String(repeating: "=", count: 70))
-print("🚀 SnapTranslate Starting")
+print("🚀 ESnap Starting")
 print(String(repeating: "=", count: 70) + "\n")
 
 // Create and configure app delegate
@@ -20,7 +20,7 @@ let mainWindow = NSWindow(
     defer: false
 )
 
-mainWindow.title = "SnapTranslate"
+mainWindow.title = "ESnap"
 mainWindow.isReleasedWhenClosed = false
 mainWindow.identifier = NSUserInterfaceItemIdentifier("mainWindow")
 

@@ -19,7 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         if !accessibilityGranted {
             print("⚠️ Accessibility permission NEEDED")
             print("📍 Please enable in: System Settings → Privacy & Security → Accessibility")
-            print("📍 Add SnapTranslate to the list")
+            print("📍 Add ESnap to the list")
             requestAccessibilityPermission()
             return
         }
