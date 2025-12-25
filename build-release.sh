@@ -65,6 +65,19 @@ if [ -f "$PROJECT_DIR/Sources/SnapTranslate/AppIcon.icns" ]; then
     echo "✅ Bundle icon (ICNS) copied"
 fi
 
+# Copy status bar icons
+if [ -d "$PROJECT_DIR/Sources/SnapTranslate/Assets.xcassets/statusbar-icon.imageset" ]; then
+    mkdir -p "$APP_BUNDLE/Contents/Resources/statusbar-icon.imageset"
+    cp "$PROJECT_DIR/Sources/SnapTranslate/Assets.xcassets/statusbar-icon.imageset"/* "$APP_BUNDLE/Contents/Resources/statusbar-icon.imageset/"
+    echo "✅ Status bar icons copied"
+fi
+
+# Copy logo.png for menu bar
+if [ -f "$PROJECT_DIR/Sources/SnapTranslate/Assets.xcassets/logo.imageset/logo.png" ]; then
+    cp "$PROJECT_DIR/Sources/SnapTranslate/Assets.xcassets/logo.imageset/logo.png" "$APP_BUNDLE/Contents/Resources/"
+    echo "✅ Logo icon (PNG) copied to Resources"
+fi
+
 echo ""
 echo "✅ App bundle ready:"
 echo "   $APP_BUNDLE"
@@ -86,7 +99,7 @@ echo "   - Added Applications folder shortcut"
 DMG_FILE="$OUTPUT_DIR/ESnap.dmg"
 rm -f "$DMG_FILE"
 
-# Create with proper format
+# Create with proper format (larger window for better layout)
 hdiutil create \
     -volname "ESnap" \
     -srcfolder "$DMG_TEMP_DIR" \
@@ -96,6 +109,43 @@ hdiutil create \
     "$DMG_FILE" 2>&1
 
 echo "✅ DMG created: $DMG_FILE"
+
+# Customize DMG appearance (icon size, position)
+echo "   - Customizing DMG layout..."
+MOUNT_POINT=$(mktemp -d)
+hdiutil attach "$DMG_FILE" -mountpoint "$MOUNT_POINT" -nobrowse 2>&1 > /dev/null
+
+# Set window properties using AppleScript
+osascript <<EOF
+tell application "Finder"
+    set f to POSIX file "$MOUNT_POINT"
+    set current view of (open f) to icon view
+    delay 1
+    set opts to the icon view options of window 1
+    set arrangement of opts to not arranged
+    set icon size of opts to 256  -- Size icon lớn lên (256x256)
+    set text size of opts to 14
+    
+    -- Position: App bên trái trên, Applications bên phải dưới
+    set position of item "ESnap.app" of window 1 to {120, 120}
+    set position of item "Applications" of window 1 to {400, 280}
+    
+    -- Set window size (rộng hơn để chứa 2 icon)
+    set bounds of window 1 to {50, 100, 650, 450}
+    
+    -- Background color trắng
+    set background picture of the desktop to ""
+end tell
+
+-- Close finder window and re-open to apply changes
+delay 2
+EOF
+
+# Unmount DMG
+hdiutil detach "$MOUNT_POINT" 2>&1 > /dev/null
+rm -rf "$MOUNT_POINT"
+
+echo "✅ DMG layout customized"
 echo ""
 
 # Cleanup temp directory

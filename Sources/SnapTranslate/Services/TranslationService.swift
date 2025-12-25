@@ -3,9 +3,10 @@ import Foundation
 class TranslationService {
     static let shared = TranslationService()
     
-    // MyMemory API endpoint (free, no authentication needed)
-    // Format: https://api.mymemory.translated.net/get?q=text&langpair=en|vi
-    private let apiURL = "https://api.mymemory.translated.net/get"
+    // Custom Translation API Server (Render.com)
+    // POST /api/translate with JSON body
+    private let apiURL = "https://esnap-translation-api.onrender.com/api/translate"
+    private let maxCharacters = 1500  // Server limit is 1500 characters
     
     // Supported language pairs (source=English, target=various)
     let supportedLanguages: [String: String] = [
@@ -26,62 +27,46 @@ class TranslationService {
     ]
     
     private init() {
-        print("✅ TranslationService initialized - Multi-language via MyMemory API")
+        print("✅ TranslationService initialized - Multi-language via Custom API Server")
     }
     
-    /// Translate English text to target language using MyMemory API
-    /// Splits text into chunks if exceeds 450 characters to avoid API URL length limits
+    /// Translate English text to target language using custom translation API
     func translate(_ text: String, to languageCode: String) async -> String {
         guard !text.isEmpty else { return "" }
         
         let charCount = text.count
         print("📊 Text has \(charCount) characters")
         
-        // MyMemory API has ~500 char limit for URL, use 450 to be safe
-        if charCount < 450 {
-            return await translateChunk(text, languageCode: languageCode)
+        // Check character limit (1500 chars max per server)
+        if charCount > maxCharacters {
+            print("⚠️ Text exceeds \(maxCharacters) character limit")
+            return "[Translation error: Text exceeds \(maxCharacters) character limit. Please use shorter text.]"
         }
         
-        // Split into chunks if text is too long
-        print("⚠️ Text exceeds 450 chars, splitting into chunks...")
-        let chunks = splitTextAtCharBoundary(text, maxChars: 450)
-        print("📦 Split into \(chunks.count) chunks")
-        
-        // Translate each chunk
-        var translatedChunks: [String] = []
-        for (index, chunk) in chunks.enumerated() {
-            print("🔄 Translating chunk \(index + 1)/\(chunks.count) (\(chunk.count) chars)...")
-            let translated = await translateChunk(chunk, languageCode: languageCode)
-            translatedChunks.append(translated)
-        }
-        
-        // Join translated chunks with space
-        let result = translatedChunks.joined(separator: " ")
-        print("✅ All chunks translated and joined")
-        return result
+        return await translateText(text, languageCode: languageCode)
     }
     
-    /// Translate a single chunk of text
-    private func translateChunk(_ text: String, languageCode: String) async -> String {
+    /// Translate text using custom API server
+    private func translateText(_ text: String, languageCode: String) async -> String {
         do {
-            // Use URLComponents for proper query parameter encoding
-            var components = URLComponents(string: apiURL)!
-            components.queryItems = [
-                URLQueryItem(name: "q", value: text),
-                URLQueryItem(name: "langpair", value: "en|\(languageCode)")
-            ]
-            
-            guard let url = components.url else {
-                print("⚠️ Invalid URL for translation")
+            guard let url = URL(string: apiURL) else {
+                print("⚠️ Invalid API URL")
                 return text
             }
             
             print("📤 Sending to translation API: \(text.prefix(60))...")
             
-            // Make request (GET)
+            // Build request body
+            let requestBody: [String: Any] = [
+                "text": text,
+                "target_language": languageCode
+            ]
+            
             var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.timeoutInterval = 10 // 10 second timeout
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.timeoutInterval = 30  // 30 second timeout
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
             
             let (data, response) = try await URLSession.shared.data(for: request)
             
@@ -91,26 +76,24 @@ class TranslationService {
             }
             
             guard httpResponse.statusCode == 200 else {
-                print("⚠️ Translation API error: \(httpResponse.statusCode)")
+                print("⚠️ Translation API error: HTTP \(httpResponse.statusCode)")
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let errorMsg = json["message"] as? String {
+                    print("   Error: \(errorMsg)")
+                }
                 return text
             }
             
             // Parse response
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                let responseData = json["responseData"] as? [String: Any],
-                let translatedText = responseData["translatedText"] as? String {
+               let success = json["success"] as? Bool,
+               success,
+               let translatedText = json["translated_text"] as? String,
+               !translatedText.isEmpty {
                 
-                // Verify we got a valid translation (not empty)
-                guard !translatedText.isEmpty else {
-                    print("⚠️ Empty translation received")
-                    return text
-                }
-                
-                // Decode URL-encoded text (MyMemory API returns encoded text)
-                let decodedText = translatedText.removingPercentEncoding ?? translatedText
-                
-                print("✅ Translation to \(languageCode) completed: \(text.prefix(50))... → \(decodedText.prefix(50))...")
-                return decodedText
+                let processingTime = json["processing_time_ms"] as? Int ?? 0
+                print("✅ Translation to \(languageCode) completed in \(processingTime)ms: \(text.prefix(50))... → \(translatedText.prefix(50))...")
+                return translatedText
             }
             
             print("⚠️ Failed to parse translation response")
@@ -120,37 +103,5 @@ class TranslationService {
             print("❌ Translation error: \(error.localizedDescription)")
             return text
         }
-    }
-    
-    /// Split text into chunks at word boundaries to avoid exceeding maxChars
-    /// Ensures chunks split at spaces, not in the middle of words
-    private func splitTextAtCharBoundary(_ text: String, maxChars: Int) -> [String] {
-        let words = text.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
-        
-        var chunks: [String] = []
-        var currentChunk: [String] = []
-        var currentLength = 0
-        
-        for word in words {
-            let wordLength = word.count
-            let spaceLength = currentChunk.isEmpty ? 0 : 1  // Space before word
-            
-            // If adding this word would exceed maxChars, save current chunk and start new one
-            if currentLength + spaceLength + wordLength > maxChars && !currentChunk.isEmpty {
-                chunks.append(currentChunk.joined(separator: " "))
-                currentChunk = [word]
-                currentLength = wordLength
-            } else {
-                currentChunk.append(word)
-                currentLength += spaceLength + wordLength
-            }
-        }
-        
-        // Add remaining chunk
-        if !currentChunk.isEmpty {
-            chunks.append(currentChunk.joined(separator: " "))
-        }
-        
-        return chunks
     }
 }

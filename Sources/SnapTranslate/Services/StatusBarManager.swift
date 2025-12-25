@@ -21,12 +21,28 @@ class StatusBarManager {
             let resourcePath = Bundle.main.resourcePath ?? "?"
             print("📍 Resource path: \(resourcePath)")
             
-            if let resourcePath = Bundle.main.resourcePath {
-                let imagePath = "\(resourcePath)/ESnap.png"
-                print("📍 Trying to load image from: \(imagePath)")
+            // Try to load from Assets first
+            if let statusBarImage = NSImage(named: "statusbar-icon") {
+                print("✅ Status bar icon loaded from Assets")
+                statusBarImage.isTemplate = true
+                button.image = statusBarImage
+                print("✅ Status bar icon set")
+            } else if let resourcePath = Bundle.main.resourcePath {
+                // Try to load logo.png first
+                var imagePath = "\(resourcePath)/logo.png"
+                print("📍 Trying to load logo from: \(imagePath)")
                 
-                if let nsImage = NSImage(contentsOfFile: imagePath) {
-                    print("✅ Image loaded successfully")
+                var nsImage = NSImage(contentsOfFile: imagePath)
+                
+                // Fallback: try to load ESnap.png if logo.png not found
+                if nsImage == nil {
+                    imagePath = "\(resourcePath)/ESnap.png"
+                    print("📍 Logo not found, trying fallback: \(imagePath)")
+                    nsImage = NSImage(contentsOfFile: imagePath)
+                }
+                
+                if let nsImage = nsImage {
+                    print("✅ Image loaded successfully from: \(imagePath)")
                     // Resize image for status bar
                     let resizedImage = NSImage(size: NSSize(width: 18, height: 18))
                     resizedImage.lockFocus()
@@ -37,9 +53,9 @@ class StatusBarManager {
                     resizedImage.unlockFocus()
                     resizedImage.isTemplate = true
                     button.image = resizedImage
-                    print("✅ Status bar icon set from ESnap.png")
+                    print("✅ Status bar icon set")
                 } else {
-                    print("❌ Failed to load image from \(imagePath)")
+                    print("❌ Failed to load image from resources")
                     // Fallback: use system icon
                     let image = NSImage(systemSymbolName: "text.viewfinder", accessibilityDescription: "ESnap")
                     image?.isTemplate = true
@@ -135,6 +151,7 @@ class StatusBarManager {
             action: #selector(quitApp),
             keyEquivalent: ""
         )
+        quitItem.target = self
         menu.addItem(quitItem)
         
         statusItem?.menu = menu

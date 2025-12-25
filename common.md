@@ -240,10 +240,10 @@ ESnap/
     - [x] `Capture & Translate` button (trigger capture)
     - [x] `Open Settings` button (open system preferences)
   - [x] Added title, subtitle, and footer hints
-- [ ] Add macOS menu bar integration (Phase 2.4):
-  - [ ] Status bar icon with dropdown menu
-  - [ ] Quick capture from menu bar
-  - [ ] Settings/Preferences from menu
+- [X] Add macOS menu bar integration (Phase 2.4):
+  - [X] Status bar icon with dropdown menu
+  - [X] Quick capture from menu bar
+  - [X] Settings/Preferences from menu
 
 ### Stage 2: Translation Integration (Days 3-5)
 - [x] Evaluate translation solutions:
@@ -260,11 +260,10 @@ ESnap/
 - [x] Error handling for translation failures
 
 ### Stage 3: Settings/Preferences (Days 5-6)
-- [ ] Create preferences window:
-  - [ ] Choose default translation language pair
-  - [ ] Hotkey customization
-  - [ ] Auto-copy behavior toggle
-  - [ ] Theme (light/dark mode)
+- [x] Create preferences window:
+  - [x] Choose default translation language pair
+  - [x] Hotkey customization
+  - [x] Auto-copy behavior toggle
 - [ ] Persist settings to UserDefaults
 - [ ] System preferences shortcut
 
