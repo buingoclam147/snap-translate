@@ -1,9 +1,11 @@
 import AppKit
+import SwiftUI
 
 class StatusBarManager {
     static let shared = StatusBarManager()
     
     private var statusItem: NSStatusItem?
+    private var captureMenuItem: NSMenuItem?
     
     func setupStatusBar() {
         // Create status bar item
@@ -60,24 +62,69 @@ class StatusBarManager {
         let menu = NSMenu()
         
         // Capture & Translate item
-        let captureItem = NSMenuItem(
+        captureMenuItem = NSMenuItem(
             title: "Capture & Translate",
             action: #selector(captureAndTranslate),
-            keyEquivalent: "c"
+            keyEquivalent: ""
         )
-        captureItem.keyEquivalentModifierMask = [.command, .control]
-        captureItem.target = self
-        menu.addItem(captureItem)
+        captureMenuItem?.target = self
+        menu.addItem(captureMenuItem!)
         
-        // Settings item
+        // Listen for hotkey changes to reload listener
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("HotKeyChanged"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            if let hotKey = notification.object as? String {
+                // Reload hotkey listener when settings change
+                self?.reloadHotKeyListener(hotKey)
+            }
+        }
+        
+        // Settings item - opens hotkey settings popover
         let settingsItem = NSMenuItem(
-            title: "Settings",
+            title: "Hotkey Settings",
             action: #selector(openSettings),
-            keyEquivalent: ","
+            keyEquivalent: ""
         )
-        settingsItem.keyEquivalentModifierMask = [.command]
         settingsItem.target = self
         menu.addItem(settingsItem)
+        
+        // Support submenu
+        let supportMenu = NSMenu()
+        
+        // Sponsors
+        let sponsorsItem = NSMenuItem(
+            title: "Support Development",
+            action: #selector(openSponsorsLink),
+            keyEquivalent: ""
+        )
+        sponsorsItem.target = self
+        supportMenu.addItem(sponsorsItem)
+        
+        // Contact email
+        let emailItem = NSMenuItem(
+            title: "Email: buingoclam00@gmail.com",
+            action: #selector(copyEmail),
+            keyEquivalent: ""
+        )
+        emailItem.target = self
+        supportMenu.addItem(emailItem)
+        
+        // LinkedIn
+        let linkedinItem = NSMenuItem(
+            title: "LinkedIn Profile",
+            action: #selector(openLinkedInLink),
+            keyEquivalent: ""
+        )
+        linkedinItem.target = self
+        supportMenu.addItem(linkedinItem)
+        
+        // Support menu item
+        let supportItem = NSMenuItem(title: "Support & Help", action: nil, keyEquivalent: "")
+        supportItem.submenu = supportMenu
+        menu.addItem(supportItem)
         
         // Separator
         menu.addItem(NSMenuItem.separator())
@@ -86,10 +133,8 @@ class StatusBarManager {
         let quitItem = NSMenuItem(
             title: "Quit ESnap",
             action: #selector(quitApp),
-            keyEquivalent: "q"
+            keyEquivalent: ""
         )
-        quitItem.keyEquivalentModifierMask = [.command]
-        quitItem.target = self
         menu.addItem(quitItem)
         
         statusItem?.menu = menu
@@ -103,14 +148,73 @@ class StatusBarManager {
     }
     
     @objc private func openSettings() {
-        print("⚙️ Opening settings")
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
+        print("⚙️ Opening hotkey settings")
+        showHotKeySettingsPopover()
+    }
+    
+    private func showHotKeySettingsPopover() {
+        guard let button = statusItem?.button else { return }
+        
+        let popover = NSPopover()
+        popover.contentViewController = NSHostingController(
+            rootView: HotKeySettingsView()
+        )
+        popover.behavior = .transient
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     }
     
     @objc private func quitApp() {
         print("👋 Quitting app")
         NSApplication.shared.terminate(nil)
+    }
+    
+    // MARK: - Hotkey Reload
+    
+    private func reloadHotKeyListener(_ hotKey: String) {
+        print("🔄 Reloading hotkey listener with: \(hotKey)")
+        
+        // Unregister old hotkey and register new one
+        HotKeyService.shared.stop()
+        
+        // Small delay to ensure unregister completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            HotKeyService.shared.start()
+            print("✅ Hotkey listener reloaded")
+        }
+    }
+    
+    // MARK: - Support & Help Actions
+    
+    @objc private func openSponsorsLink() {
+        if let url = URL(string: "https://github.com/sponsors/buingoclam147") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
+    @objc private func copyEmail() {
+        let email = "buingoclam00@gmail.com"
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(email, forType: .string)
+        showNotification(title: "Copied", message: email)
+    }
+    
+    @objc private func copyPhone() {
+        let phone = "0867655051"
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(phone, forType: .string)
+        showNotification(title: "Copied", message: phone)
+    }
+    
+    @objc private func openLinkedInLink() {
+        if let url = URL(string: "https://www.linkedin.com/in/bui-lam-frontend/") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
+    private func showNotification(title: String, message: String) {
+        let notification = NSUserNotification()
+        notification.title = title
+        notification.informativeText = message
+        NSUserNotificationCenter.default.deliver(notification)
     }
 }

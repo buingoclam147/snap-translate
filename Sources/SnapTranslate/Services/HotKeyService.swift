@@ -7,6 +7,7 @@ class HotKeyService: NSObject {
     static let shared = HotKeyService()
     
     private var hotKeyRef: EventHotKeyRef?
+    private var eventHandlerRef: EventHandlerRef?
     var onHotKeyPressed: (() -> Void)?
     
     override init() {
@@ -19,13 +20,18 @@ class HotKeyService: NSObject {
         print("📝 Using RegisterEventHotKey (no permissions required)")
         print(String(repeating: "=", count: 70) + "\n")
         
+        installEventHandlerOnce()
         registerGlobalHotkey()
     }
     
-    // MARK: - Carbon Event Handler
+    // MARK: - Install Event Handler (Once Only)
     
-    private func registerGlobalHotkey() {
-        // Register the keyboard event handler
+    private func installEventHandlerOnce() {
+        guard eventHandlerRef == nil else {
+            print("✅ Event handler already installed, skipping...")
+            return
+        }
+        
         var eventType = EventTypeSpec()
         eventType.eventClass = OSType(kEventClassKeyboard)
         eventType.eventKind = OSType(kEventHotKeyPressed)
@@ -40,7 +46,7 @@ class HotKeyService: NSObject {
             1,
             &eventType,
             Unmanaged.passUnretained(self).toOpaque(),
-            nil
+            &eventHandlerRef
         )
         
         guard status == noErr else {
@@ -48,9 +54,24 @@ class HotKeyService: NSObject {
             return
         }
         
-        // Register the actual hotkey: Cmd + Ctrl + C
-        let keyCode: UInt32 = 8  // C key
-        let modifiers: UInt32 = UInt32(cmdKey | controlKey)
+        print("✅ Event handler installed successfully")
+    }
+    
+    // MARK: - Register Hotkey
+    
+    private func registerGlobalHotkey() {
+        // Unregister old hotkey if exists
+        if let ref = hotKeyRef {
+            UnregisterEventHotKey(ref)
+            hotKeyRef = nil
+            print("🔄 Old hotkey unregistered")
+        }
+        
+        // Get hotkey from saved settings
+        let savedHotKey = HotKeyManager.shared.getSavedHotKey()
+        let (keyCode, modifiers) = HotKeyManager.shared.parseHotKey(savedHotKey)
+        
+        print("📍 Registering hotkey: \(savedHotKey) (keyCode=\(keyCode), modifiers=\(modifiers))")
         
         var hotKeyID = EventHotKeyID()
         hotKeyID.signature = OSType("snap".fourCharCodeValue)
@@ -66,12 +87,12 @@ class HotKeyService: NSObject {
         )
         
         guard registerStatus == noErr else {
-            print("❌ Failed to register hotkey")
+            print("❌ Failed to register hotkey: \(registerStatus)")
             return
         }
         
         print("✅ Global hotkey registered successfully")
-        print("✅ Listening for: Cmd + Ctrl + C")
+        print("✅ Listening for: \(savedHotKey)")
         print("✅ Works in ANY app (global hotkey)")
         print("✅ NO permissions required!\n")
     }
