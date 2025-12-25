@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.esnap.app</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
@@ -20,5 +22,7 @@
 	<string>NSApplication</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
+	<key>LSUIElement</key>
+	<true/>
 </dict>
 </plist>

@@ -1,80 +1,173 @@
 import SwiftUI
 import AppKit
+import CoreGraphics
 
+#if os(macOS)
+import ScreenCaptureKit
+#endif
 
 // App is now started from main.swift instead of @main decorator
 // This gives us more control over window creation and hotkey setup
 
 class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     static var mainWindow: NSWindow?
+    private var permissionCheckTimer: Timer?
     
     func setupHotkeys() {
         print("\n" + String(repeating: "=", count: 70))
-        print("🎯 AppDelegate.setupHotkeys() called - initializing hotkeys")
+        print("🎯 AppDelegate.setupHotkeys() called")
+        print("📝 Step 1: Setup hotkey listener (Carbon API - no permissions)")
+        print("📝 Step 2: Check Screen Recording permission (for capture)")
         print(String(repeating: "=", count: 70) + "\n")
         
-        // Check accessibility permission FIRST
-        let accessibilityGranted = checkAccessibilityPermission()
+        // Step 1: Start hotkey listener (uses Carbon API - no permissions needed)
+        print("🔧 Step 1: Setting up global hotkey listener...\n")
+        startHotKeyListener()
         
-        if !accessibilityGranted {
-            print("⚠️ Accessibility permission NEEDED")
-            print("📍 Please enable in: System Settings → Privacy & Security → Accessibility")
-            print("📍 Add ESnap to the list")
-            requestAccessibilityPermission()
-            return
-        }
+        // Step 2: Check and request Screen Recording permission (needed for capture)
+        print("🔧 Step 2: Checking Screen Recording permission...\n")
+        checkAndRequestScreenRecordingPermission()
+    }
+    
+    // MARK: - Screen Recording Permission
+    
+    private func checkAndRequestScreenRecordingPermission() {
+        print("📊 Checking Screen Recording permission...\n")
         
-        print("✅ Accessibility permission CONFIRMED\n")
-        
-        // Request Screen Recording permission early (so popup happens once at startup, not during capture)
-        print("🎥 Requesting Screen Recording permission...")
-        requestScreenRecordingPermission()
-        
-        // Start hotkey listener
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            self.startHotKeyListener()
+        // Try to check permission
+        if #available(macOS 13.0, *) {
+            Task {
+                let hasPermission = await checkScreenRecordingPermissionModern()
+                
+                DispatchQueue.main.async {
+                    print("📊 Permission Status:")
+                    print("   • Screen & System Audio Recording: \(hasPermission ? "✅" : "❌")\n")
+                    
+                    if !hasPermission {
+                        print("📍 Requesting permission...\n")
+                        self.requestScreenRecordingPermissionModern()
+                    } else {
+                        print("✅ Screen Recording permission already granted!\n")
+                    }
+                }
+            }
+        } else {
+            // Fallback for older macOS
+            let hasPermission = checkScreenRecordingPermissionLegacy()
+            
+            print("📊 Permission Status:")
+            print("   • Screen & System Audio Recording: \(hasPermission ? "✅" : "❌")\n")
+            
+            if !hasPermission {
+                print("📍 Requesting permission...\n")
+                requestScreenRecordingPermissionLegacy()
+            } else {
+                print("✅ Screen Recording permission already granted!\n")
+            }
         }
     }
     
-    private func requestScreenRecordingPermission() {
-        print("🎥 Requesting Screen Recording permission at startup...")
+    // MARK: - Modern Permission (macOS 13+)
+    
+    @available(macOS 13.0, *)
+    private func checkScreenRecordingPermissionModern() async -> Bool {
+        do {
+            _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            return true
+        } catch {
+            print("⚠️  No Screen Recording permission: \(error.localizedDescription)")
+            return false
+        }
+    }
+    
+    @available(macOS 13.0, *)
+    private func requestScreenRecordingPermissionModern() {
+        Task {
+            do {
+                print("🎥 Requesting Screen & System Audio Recording permission...\n")
+                _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+                print("✅ Screen Recording permission GRANTED!\n")
+            } catch {
+                print("❌ Screen Recording permission DENIED or error: \(error.localizedDescription)\n")
+                print("📍 User can enable in: System Settings → Privacy & Security → Screen & System Audio Recording\n")
+            }
+        }
+    }
+    
+    // MARK: - Legacy Permission (macOS < 13)
+    
+    private func checkScreenRecordingPermissionLegacy() -> Bool {
+        // For older macOS, try to use CGDisplayCreateImage
+        let displayID = CGMainDisplayID()
+        return CGDisplayCreateImage(displayID) != nil
+    }
+    
+    private func requestScreenRecordingPermissionLegacy() {
+        // Trigger permission request on background thread
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let displayID = CGMainDisplayID()
+            _ = CGDisplayCreateImage(displayID)
+            
+            // Start polling to check if permission is granted
+            DispatchQueue.main.async {
+                self?.startPermissionPolling()
+            }
+        }
+    }
+    
+    private func startPermissionPolling() {
+        print("📡 Polling for permission (checking every 1 second)...\n")
         
-        // Background thread to avoid blocking UI
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Attempting to capture triggers the system permission dialog if not granted
-            // This happens only once - future captures won't prompt
-            if let _ = CGDisplayCreateImage(CGMainDisplayID()) {
-                print("✅ Screen Recording permission already granted")
-            } else {
-                print("⚠️ Screen Recording permission may have been denied")
+        permissionCheckTimer?.invalidate()
+        
+        var pollCount = 0
+        let maxPolls = 180 // 3 minutes
+        
+        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            pollCount += 1
+            
+            let hasPermission = self?.checkScreenRecordingPermissionLegacy() ?? false
+            
+            if pollCount % 10 == 0 {
+                print("⏱️  Polling (\(pollCount)s)... Permission: \(hasPermission ? "✅" : "❌")")
+            }
+            
+            if hasPermission {
+                print("\n✅ Screen Recording permission DETECTED!\n")
+                self?.permissionCheckTimer?.invalidate()
+                self?.permissionCheckTimer = nil
+            } else if pollCount >= maxPolls {
+                print("\n⏱️  Permission polling timed out (3 min)\n")
+                self?.permissionCheckTimer?.invalidate()
+                self?.permissionCheckTimer = nil
+                self?.showTimeoutAlert()
+            }
+        }
+    }
+    
+    private func showTimeoutAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Screen Recording Permission"
+        alert.informativeText = "Please grant Screen Recording permission in System Settings to use capture feature.\n\nSystem Settings → Privacy & Security → Screen & System Audio Recording"
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "OK")
+        alert.alertStyle = .informational
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenRecording") {
+                NSWorkspace.shared.open(url)
             }
         }
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("📱 applicationDidFinishLaunching called")
-    }
-    
-    private func checkAccessibilityPermission() -> Bool {
-        let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: false]
-        let trusted = AXIsProcessTrustedWithOptions(options)
-        print("🔐 checkAccessibilityPermission() -> \(trusted)")
-        return trusted
-    }
-    
-    private func requestAccessibilityPermission() {
-        print("🔐 Requesting accessibility permission with prompt...")
-        let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true]
-        let trusted = AXIsProcessTrustedWithOptions(options)
         
-        if trusted {
-            print("✅ User GRANTED accessibility permission")
-            // Now setup hotkeys
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.startHotKeyListener()
-            }
-        } else {
-            print("❌ User DENIED accessibility permission")
+        // Setup status bar after app finishes launching
+        DispatchQueue.main.async {
+            print("🎯 Setting up status bar in applicationDidFinishLaunching")
+            StatusBarManager.shared.setupStatusBar()
         }
     }
     

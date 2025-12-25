@@ -1,11 +1,12 @@
 import Foundation
 #if os(macOS)
 import AppKit
+import Carbon
 
 class HotKeyService: NSObject {
     static let shared = HotKeyService()
     
-    private var monitor: Any?
+    private var hotKeyRef: EventHotKeyRef?
     var onHotKeyPressed: (() -> Void)?
     
     override init() {
@@ -14,86 +15,100 @@ class HotKeyService: NSObject {
     
     func start() {
         print("\n" + String(repeating: "=", count: 70))
-        print("🎯 HotKeyService.start() - Registering keyboard listener")
-        print("📝 onHotKeyPressed handler set? \(onHotKeyPressed != nil)")
+        print("🎯 HotKeyService.start() - Global Hotkey Listener (Carbon API)")
+        print("📝 Using RegisterEventHotKey (no permissions required)")
         print(String(repeating: "=", count: 70) + "\n")
         
-        // Try BOTH monitors - global + local
-        var globalRegistered = false
-        var localRegistered = false
-        
-        // Try GLOBAL monitor first (works when app is background)
-        monitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleKeyEvent(event, isGlobal: true)
-        }
-        
-        if monitor != nil {
-            globalRegistered = true
-            print("✅ Global keyboard monitor registered")
-        } else {
-            print("⚠️ Global monitor failed")
-        }
-        
-        // ALSO try local monitor (works when app is foreground)
-        let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleKeyEvent(event, isGlobal: false)
-            return event
-        }
-        
-        if localMonitor != nil {
-            localRegistered = true
-            print("✅ Local keyboard monitor registered")
-            // Keep local monitor reference
-            if monitor == nil {
-                monitor = localMonitor
-            }
-        } else {
-            print("⚠️ Local monitor failed")
-        }
-        
-        print("")
-        
-        if !globalRegistered && !localRegistered {
-            print("❌ FATAL ERROR: Both global and local monitors failed!")
-            print("   Accessibility permission might not be granted")
-        } else {
-            print("✅ Keyboard listener ACTIVE")
-            if globalRegistered && localRegistered {
-                print("   (Both global + local monitors)")
-            } else if globalRegistered {
-                print("   (Global monitor only)")
-            } else {
-                print("   (Local monitor only - app must stay focused)")
-            }
-            print("✅ Listening for: Cmd + Shift + C (keyCode 8)")
-            print("\n📢 Press Cmd+Shift+C now\n")
-        }
+        registerGlobalHotkey()
     }
     
-    private func handleKeyEvent(_ event: NSEvent, isGlobal: Bool) {
-        let cmdPressed = event.modifierFlags.contains(.command)
-        let shiftPressed = event.modifierFlags.contains(.shift)
-        let cKeyPressed = event.keyCode == 8  // C key = keyCode 8
+    // MARK: - Carbon Event Handler
+    
+    private func registerGlobalHotkey() {
+        // Register the keyboard event handler
+        var eventType = EventTypeSpec()
+        eventType.eventClass = OSType(kEventClassKeyboard)
+        eventType.eventKind = OSType(kEventHotKeyPressed)
         
-        let monitorType = isGlobal ? "🌍 Global" : "🔒 Local"
+        let status = InstallEventHandler(
+            GetApplicationEventTarget(),
+            { (nextHandler, theEvent, userData) -> OSStatus in
+                let hotKeyService = Unmanaged<HotKeyService>.fromOpaque(userData!).takeUnretainedValue()
+                hotKeyService.handleHotKeyEvent(theEvent)
+                return noErr
+            },
+            1,
+            &eventType,
+            Unmanaged.passUnretained(self).toOpaque(),
+            nil
+        )
         
-        // Log EVERY keystroke
-        print("\(monitorType) ⌨️ KEY: keyCode=\(event.keyCode) | Cmd:\(cmdPressed ? "Y" : "N") Shift:\(shiftPressed ? "Y" : "N")")
-        
-        // Special log for Cmd+Shift combos
-        if cmdPressed && shiftPressed {
-            print("   ⚡ Cmd+Shift combo! keyCode=\(event.keyCode) (C=8)")
+        guard status == noErr else {
+            print("❌ Failed to install event handler")
+            return
         }
         
-        // Check for exact match: Cmd + Shift + C
-        if cmdPressed && shiftPressed && cKeyPressed {
+        // Register the actual hotkey: Cmd + Ctrl + C
+        let keyCode: UInt32 = 8  // C key
+        let modifiers: UInt32 = UInt32(cmdKey | controlKey)
+        
+        var hotKeyID = EventHotKeyID()
+        hotKeyID.signature = OSType("snap".fourCharCodeValue)
+        hotKeyID.id = 1
+        
+        let registerStatus = RegisterEventHotKey(
+            keyCode,
+            modifiers,
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &hotKeyRef
+        )
+        
+        guard registerStatus == noErr else {
+            print("❌ Failed to register hotkey")
+            return
+        }
+        
+        print("✅ Global hotkey registered successfully")
+        print("✅ Listening for: Cmd + Ctrl + C")
+        print("✅ Works in ANY app (global hotkey)")
+        print("✅ NO permissions required!\n")
+    }
+    
+    // MARK: - Event Handling
+    
+    private func handleHotKeyEvent(_ event: EventRef?) {
+        guard let event = event else { return }
+        
+        var hotKeyID = EventHotKeyID()
+        let paramSize = MemoryLayout<EventHotKeyID>.size
+        
+        let status = GetEventParameter(
+            event,
+            EventParamName(kEventParamDirectObject),
+            EventParamType(typeEventHotKeyID),
+            nil,
+            paramSize,
+            nil,
+            &hotKeyID
+        )
+        
+        guard status == noErr else {
+            return
+        }
+        
+        // Verify this is our hotkey
+        if hotKeyID.id == 1 {
             print("\n" + String(repeating: "🔥", count: 40))
-            print("🔥🔥🔥 HOTKEY: Cmd + Shift + C DETECTED 🔥🔥🔥")
+            print("🔥🔥🔥 GLOBAL HOTKEY: Cmd + Ctrl + C DETECTED 🔥🔥🔥")
             print(String(repeating: "🔥", count: 40) + "\n")
             
             if onHotKeyPressed != nil {
                 print("✅ Calling hotkey handler")
-                onHotKeyPressed?()
+                DispatchQueue.main.async {
+                    self.onHotKeyPressed?()
+                }
             } else {
                 print("❌ ERROR: Handler is nil!")
             }
@@ -101,15 +116,35 @@ class HotKeyService: NSObject {
     }
     
     func stop() {
-        if let monitor = monitor {
-            NSEvent.removeMonitor(monitor)
-            self.monitor = nil
-            print("🛑 HotKeyService stopped")
+        if let ref = hotKeyRef {
+            UnregisterEventHotKey(ref)
+            hotKeyRef = nil
         }
+        print("🛑 HotKeyService stopped")
     }
     
     deinit {
         stop()
     }
 }
+
+// MARK: - Helper Extension
+
+extension String {
+    /// Converts string to OSType (4-character code)
+    /// Example: "snap" → 0x736E6170
+    var fourCharCodeValue: Int {
+        var result: Int = 0
+        if let data = self.data(using: String.Encoding.macOSRoman) {
+            data.withUnsafeBytes { rawBytes in
+                let bytes = rawBytes.bindMemory(to: UInt8.self)
+                for i in 0 ..< data.count {
+                    result = result << 8 + Int(bytes[i])
+                }
+            }
+        }
+        return result
+    }
+}
+
 #endif

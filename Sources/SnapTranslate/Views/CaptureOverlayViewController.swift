@@ -10,6 +10,19 @@ class SimpleOverlayView: NSView {
     override func awakeFromNib() {
         super.awakeFromNib()
         print("✅ SimpleOverlayView awake from nib")
+        updateCursor()
+    }
+    
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        updateCursor()
+    }
+    
+    private func updateCursor() {
+        // Set crosshair cursor immediately
+        DispatchQueue.main.async {
+            NSCursor.crosshair.push()
+        }
     }
     
     override var acceptsFirstResponder: Bool {
@@ -78,6 +91,12 @@ class SimpleOverlayView: NSView {
         }
     }
     
+    // Change cursor to crosshair
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: NSCursor.crosshair)
+    }
+    
     // DRAW
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
@@ -99,10 +118,12 @@ class SimpleOverlayView: NSView {
             NSColor.blue.withAlphaComponent(0.1).setFill()
             rect.fill()
             
-            // Blue border
+            // Blue dashed border
             NSColor.blue.setStroke()
             let path = NSBezierPath(rect: rect)
             path.lineWidth = 2
+            let dashes: [CGFloat] = [5, 5]  // 5px dash, 5px gap
+            path.setLineDash(dashes, count: dashes.count, phase: 0)
             path.stroke()
             
             // Size text
@@ -116,20 +137,27 @@ class SimpleOverlayView: NSView {
             attrString.draw(at: NSPoint(x: rect.maxX - 80, y: rect.maxY - 20))
         }
         
-        // Instructions
+        // Instructions - single line + multilingual
         if !isDrawing {
-            let text = "Drag to select\nPress ESC to cancel"
             let style = NSMutableParagraphStyle()
             style.alignment = .center
+            style.lineSpacing = 8
             
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: NSFont.systemFont(ofSize: 16, weight: .semibold),
                 .foregroundColor: NSColor.white,
                 .paragraphStyle: style
             ]
+            
+            let text = """
+Drag to select, Press ESC to cancel
+拖动选择，按 ESC 取消
+Kéo để chọn, Nhấn ESC để hủy
+"""
+            
             let attrString = NSAttributedString(string: text, attributes: attrs)
             let size = attrString.size()
-            attrString.draw(at: NSPoint(x: bounds.midX - size.width / 2, y: bounds.midY - size.height / 2))
+            attrString.draw(at: NSPoint(x: bounds.midX - size.width / 2, y: bounds.midY + 40))
         }
     }
 }
