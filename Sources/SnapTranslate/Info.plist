@@ -5,7 +5,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.esnap.app</string>
+	<string>com.tsnap.app</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
@@ -13,9 +13,9 @@
 	<key>LSMinimumSystemVersion</key>
 	<string>12.0</string>
 	<key>NSAccessibilityUsageDescription</key>
-	<string>ESnap needs accessibility permission to listen for the global shortcut (Cmd+Ctrl+C).</string>
+	<string>TSnap needs accessibility permission to listen for the global shortcut (Cmd+Ctrl+C).</string>
 	<key>NSScreenRecordingUsageDescription</key>
-	<string>ESnap needs screen recording permission to capture screen regions for OCR processing.</string>
+	<string>TSnap needs screen recording permission to capture screen regions for OCR processing.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2025. All rights reserved.</string>
 	<key>NSPrincipalClass</key>

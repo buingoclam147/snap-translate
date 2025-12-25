@@ -7,11 +7,11 @@ set -e
 
 PROJECT_DIR="/Users/lamngoc/snap-translate"
 BUILD_DIR="$PROJECT_DIR/.build/debug"
-EXECUTABLE="$BUILD_DIR/ESnap"
-APP_BUNDLE="$BUILD_DIR/ESnap.app"
+EXECUTABLE="$BUILD_DIR/TSnap"
+APP_BUNDLE="$BUILD_DIR/TSnap.app"
 
 echo "=================================="
-echo "🚀 ESnap App Launcher"
+echo "🚀 TSnap App Launcher"
 echo "=================================="
 echo ""
 
@@ -20,7 +20,7 @@ echo "🧹 Cleaning old build..."
 rm -rf "$BUILD_DIR"
 
 # Always build to get latest changes
-echo "📦 Building ESnap..."
+echo "📦 Building TSnap..."
 cd "$PROJECT_DIR"
 swift build
 echo ""
@@ -35,18 +35,18 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 # Copy executable
-cp "$EXECUTABLE" "$APP_BUNDLE/Contents/MacOS/ESnap"
-chmod +x "$APP_BUNDLE/Contents/MacOS/ESnap"
+cp "$EXECUTABLE" "$APP_BUNDLE/Contents/MacOS/TSnap"
+chmod +x "$APP_BUNDLE/Contents/MacOS/TSnap"
 
 # Copy Info.plist
 cp "$PROJECT_DIR/Sources/SnapTranslate/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
 
 # Copy image resources and app icon
-cp "$PROJECT_DIR/Sources/SnapTranslate/Assets.xcassets/ESnap.imageset/ESnap.png" "$APP_BUNDLE/Contents/Resources/"
+cp "$PROJECT_DIR/Sources/SnapTranslate/Assets.xcassets/TSnap.imageset/TSnap.png" "$APP_BUNDLE/Contents/Resources/"
 cp "$PROJECT_DIR/Sources/SnapTranslate/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/"
 
 # Copy entitlements
-cp "$PROJECT_DIR/Sources/SnapTranslate/SnapTranslate.entitlements" "$APP_BUNDLE/Contents/ESnap.entitlements"
+cp "$PROJECT_DIR/Sources/SnapTranslate/SnapTranslate.entitlements" "$APP_BUNDLE/Contents/TSnap.entitlements"
 
 echo "✅ App bundle ready at:"
 echo "   $APP_BUNDLE"

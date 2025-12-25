@@ -1,19 +1,19 @@
 #!/bin/bash
 
-# ESnap Release Builder
+# TSnap Release Builder
 # Tạo release app bundle sẵn để phân phối theo chuẩn macOS
 
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="$PROJECT_DIR/.build/release"
-EXECUTABLE="$BUILD_DIR/ESnap"
-APP_BUNDLE="$BUILD_DIR/ESnap.app"
+EXECUTABLE="$BUILD_DIR/TSnap"
+APP_BUNDLE="$BUILD_DIR/TSnap.app"
 OUTPUT_DIR="$PROJECT_DIR/releases"
-DMG_TEMP_DIR="/tmp/esnap-dmg-$$"
+DMG_TEMP_DIR="/tmp/tsnap-dmg-$$"
 
 echo "=================================="
-echo "🚀 ESnap Release Builder"
+echo "🚀 TSnap Release Builder"
 echo "=================================="
 echo ""
 
@@ -34,7 +34,7 @@ fi
 mkdir -p "$OUTPUT_DIR"
 
 # Build in release mode
-echo "📦 Building ESnap (release mode)..."
+echo "📦 Building TSnap (release mode)..."
 cd "$PROJECT_DIR"
 swift build -c release 2>&1
 echo ""
@@ -45,8 +45,8 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 # Copy executable
-cp "$EXECUTABLE" "$APP_BUNDLE/Contents/MacOS/ESnap"
-chmod +x "$APP_BUNDLE/Contents/MacOS/ESnap"
+cp "$EXECUTABLE" "$APP_BUNDLE/Contents/MacOS/TSnap"
+chmod +x "$APP_BUNDLE/Contents/MacOS/TSnap"
 
 # Copy Info.plist
 if [ -f "$PROJECT_DIR/Sources/SnapTranslate/Info.plist" ]; then
@@ -55,8 +55,8 @@ if [ -f "$PROJECT_DIR/Sources/SnapTranslate/Info.plist" ]; then
 fi
 
 # Copy resources
-if [ -f "$PROJECT_DIR/Sources/SnapTranslate/Assets.xcassets/ESnap.imageset/ESnap.png" ]; then
-    cp "$PROJECT_DIR/Sources/SnapTranslate/Assets.xcassets/ESnap.imageset/ESnap.png" "$APP_BUNDLE/Contents/Resources/"
+if [ -f "$PROJECT_DIR/Sources/SnapTranslate/Assets.xcassets/TSnap.imageset/TSnap.png" ]; then
+    cp "$PROJECT_DIR/Sources/SnapTranslate/Assets.xcassets/TSnap.imageset/TSnap.png" "$APP_BUNDLE/Contents/Resources/"
     echo "✅ App icon (PNG) copied"
 fi
 
@@ -96,12 +96,12 @@ ln -s /Applications "$DMG_TEMP_DIR/Applications"
 echo "   - Added Applications folder shortcut"
 
 # Create DMG
-DMG_FILE="$OUTPUT_DIR/ESnap.dmg"
+DMG_FILE="$OUTPUT_DIR/TSnap.dmg"
 rm -f "$DMG_FILE"
 
 # Create with proper format (larger window for better layout)
 hdiutil create \
-    -volname "ESnap" \
+    -volname "TSnap" \
     -srcfolder "$DMG_TEMP_DIR" \
     -ov \
     -format UDZO \
@@ -127,7 +127,7 @@ tell application "Finder"
     set text size of opts to 14
     
     -- Position: App bên trái trên, Applications bên phải dưới
-    set position of item "ESnap.app" of window 1 to {120, 120}
+    set position of item "TSnap.app" of window 1 to {120, 120}
     set position of item "Applications" of window 1 to {400, 280}
     
     -- Set window size (rộng hơn để chứa 2 icon)
@@ -154,9 +154,9 @@ rm -rf "$DMG_TEMP_DIR"
 # Create ZIP as alternative
 echo "📦 Creating ZIP (alternative format)..."
 cd "$BUILD_DIR"
-ZIP_FILE="$OUTPUT_DIR/ESnap.zip"
+ZIP_FILE="$OUTPUT_DIR/TSnap.zip"
 rm -f "$ZIP_FILE"
-zip -r -q "$ZIP_FILE" ESnap.app
+zip -r -q "$ZIP_FILE" TSnap.app
 cd "$PROJECT_DIR"
 
 echo "✅ ZIP created: $ZIP_FILE"

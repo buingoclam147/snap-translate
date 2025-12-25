@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 print("\n" + String(repeating: "=", count: 70))
-print("🚀 ESnap Starting (StatusBar Mode)")
+print("🚀 TSnap Starting (StatusBar Mode)")
 print(String(repeating: "=", count: 70) + "\n")
 
 fflush(stdout)

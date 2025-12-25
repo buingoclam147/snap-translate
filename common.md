@@ -1,4 +1,4 @@
-# 📱 ESnap
+# 📱 TSnap
 
 **Instant OCR & Translation Overlay for macOS**
 
@@ -6,7 +6,7 @@
 
 ## 🎯 1. Product Vision
 
-ESnap is a native macOS application that allows users to:
+TSnap is a native macOS application that allows users to:
 
 - Press a global shortcut (Cmd + Ctrl + C)
 - Drag to select any region on screen
@@ -159,7 +159,7 @@ let results = request.results as? [VNRecognizedTextObservation]
 ### Module Breakdown
 
 ```
-ESnap/
+TSnap/
 ├── App/
 │   └── SnapTranslateApp.swift        (Entry point)
 │

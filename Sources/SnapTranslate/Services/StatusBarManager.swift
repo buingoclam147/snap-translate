@@ -34,9 +34,9 @@ class StatusBarManager {
                 
                 var nsImage = NSImage(contentsOfFile: imagePath)
                 
-                // Fallback: try to load ESnap.png if logo.png not found
+                // Fallback: try to load TSnap.png if logo.png not found
                 if nsImage == nil {
-                    imagePath = "\(resourcePath)/ESnap.png"
+                    imagePath = "\(resourcePath)/TSnap.png"
                     print("📍 Logo not found, trying fallback: \(imagePath)")
                     nsImage = NSImage(contentsOfFile: imagePath)
                 }
@@ -57,7 +57,7 @@ class StatusBarManager {
                 } else {
                     print("❌ Failed to load image from resources")
                     // Fallback: use system icon
-                    let image = NSImage(systemSymbolName: "text.viewfinder", accessibilityDescription: "ESnap")
+                    let image = NSImage(systemSymbolName: "text.viewfinder", accessibilityDescription: "TSnap")
                     image?.isTemplate = true
                     button.image = image
                     print("✅ Using fallback system icon")
@@ -65,7 +65,7 @@ class StatusBarManager {
             } else {
                 print("❌ Resource path not found")
                 // Fallback: use system icon
-                let image = NSImage(systemSymbolName: "text.viewfinder", accessibilityDescription: "ESnap")
+                let image = NSImage(systemSymbolName: "text.viewfinder", accessibilityDescription: "TSnap")
                 image?.isTemplate = true
                 button.image = image
                 print("✅ Using fallback system icon")
@@ -147,7 +147,7 @@ class StatusBarManager {
         
         // Quit item
         let quitItem = NSMenuItem(
-            title: "Quit ESnap",
+            title: "Quit TSnap",
             action: #selector(quitApp),
             keyEquivalent: ""
         )
