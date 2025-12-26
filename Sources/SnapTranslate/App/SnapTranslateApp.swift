@@ -17,15 +17,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         print("\n" + String(repeating: "=", count: 70))
         print("🎯 AppDelegate.setupHotkeys() called")
         print("📝 Step 1: Setup hotkey listener (Carbon API - no permissions)")
-        print("📝 Step 2: Check Screen Recording permission (for capture)")
+        print("📝 Step 2: Setup ESC key listener (close popover / cancel drag)")
+        print("📝 Step 3: Check Screen Recording permission (for capture)")
         print(String(repeating: "=", count: 70) + "\n")
         
         // Step 1: Start hotkey listener (uses Carbon API - no permissions needed)
         print("🔧 Step 1: Setting up global hotkey listener...\n")
         startHotKeyListener()
         
-        // Step 2: Check and request Screen Recording permission (needed for capture)
-        print("🔧 Step 2: Checking Screen Recording permission...\n")
+        // Step 2: Start ESC key listener (for closing popover and cancelling drag)
+        print("🔧 Step 2: Setting up ESC key listener...\n")
+        startEscapeKeyListener()
+        
+        // Step 3: Check and request Screen Recording permission (needed for capture)
+        print("🔧 Step 3: Checking Screen Recording permission...\n")
         checkAndRequestScreenRecordingPermission()
     }
     
@@ -176,14 +181,31 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         
         HotKeyService.shared.onHotKeyPressed = {
             print("\n🔥🔥🔥 HOTKEY TRIGGERED - Cmd+Ctrl+C DETECTED 🔥🔥🔥\n")
-            // Access the global CaptureViewModel instance and trigger capture
+            // Trigger capture with callback to show translator popover
             DispatchQueue.main.async {
                 print("✅ Starting capture from hotkey")
-                CaptureViewModel.shared.startCapture()
+                
+                CaptureViewModel.shared.startCapture { image in
+                    print("📸 Hotkey capture completed - showing translator popover")
+                    // Set captured image directly to translator view model
+                    TranslatorViewModel.shared.capturedImage = image
+                    
+                    // Show translator popover from menu bar
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        StatusBarManager.shared.showTranslatorPopover()
+                    }
+                }
             }
         }
         
         HotKeyService.shared.start()
         print("✅ HotKeyService is now ACTIVE - listening for Cmd+Ctrl+C\n")
+    }
+    
+    private func startEscapeKeyListener() {
+        print("🎯 EscapeKeyService setup starting...")
+        
+        EscapeKeyService.shared.start()
+        print("✅ EscapeKeyService is now ACTIVE - listening for ESC key\n")
     }
 }

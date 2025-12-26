@@ -11,15 +11,19 @@ class CaptureViewModel: NSObject, ObservableObject {
     
     private var captureWindow: NSWindow?
     private var escapeMonitor: Any?
+    private var captureCallback: ((NSImage) -> Void)?
+    private var isProcessing = false
     
     override init() {
         super.init()
         print("🔧 CaptureViewModel.init() - Instance created")
     }
     
-    func startCapture() {
+    func startCapture(completion: ((NSImage) -> Void)? = nil) {
+        captureCallback = completion
         LogService.shared.info("\n" + String(repeating: "=", count: 50))
-        LogService.shared.info("🚀 CAPTURE START")
+        LogService.shared.info("🚀 CAPTURE START - Drag Mode (OCR)")
+        LogService.shared.info("🔑 Press ESC to cancel")
         LogService.shared.info(String(repeating: "=", count: 50))
         
         guard !isCapturing else { 
@@ -28,6 +32,20 @@ class CaptureViewModel: NSObject, ObservableObject {
         }
         
         isCapturing = true
+        
+        // Set up ESC handler for drag mode
+        EscapeKeyService.shared.onEscapePressed = {
+            LogService.shared.info("\n" + String(repeating: "🛑", count: 40))
+            LogService.shared.info("🛑🛑🛑 DRAG MODE: ESC Pressed - CANCELLING Capture 🛑🛑🛑")
+            LogService.shared.info(String(repeating: "🛑", count: 40) + "\n")
+            
+            // Cancel OCR if it's processing
+            if self.isProcessing {
+                OCRService.shared.cancelOCR()
+            }
+            
+            self.endCapture()
+        }
         
         guard let screen = NSScreen.main else {
             LogService.shared.error("❌ No main screen")
@@ -38,14 +56,15 @@ class CaptureViewModel: NSObject, ObservableObject {
         LogService.shared.debug("  Screen frame: \(screenFrame)")
         LogService.shared.debug("  Screen visible frame: \(screen.visibleFrame)")
         
-        // Create fullscreen window
-        captureWindow = NSWindow(contentRect: screenFrame, styleMask: [], backing: .buffered, defer: false)
-        captureWindow?.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 10)
-        captureWindow?.backgroundColor = NSColor.clear
-        captureWindow?.isOpaque = false
-        captureWindow?.ignoresMouseEvents = false
-        captureWindow?.acceptsMouseMovedEvents = true
-        captureWindow?.isReleasedWhenClosed = false
+        // Create fullscreen window with custom subclass to handle keyboard events
+        let window = CaptureWindow(contentRect: screenFrame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 10)
+        window.backgroundColor = NSColor.clear
+        window.isOpaque = false
+        window.ignoresMouseEvents = false
+        window.acceptsMouseMovedEvents = true
+        window.isReleasedWhenClosed = false
+        captureWindow = window
         
         LogService.shared.info("✅ Overlay window created - level: \(captureWindow?.level.rawValue ?? 0)")
         
@@ -69,19 +88,28 @@ class CaptureViewModel: NSObject, ObservableObject {
             LogService.shared.debug("  ✅ Main window hidden")
         }
         
-        // Show and focus
+        // Show and focus - order matters!
         captureWindow?.makeKeyAndOrderFront(nil)
         captureWindow?.makeFirstResponder(overlayView)
+        // Force first responder again to ensure keyboard focus
+        DispatchQueue.main.async { [weak self] in
+            self?.captureWindow?.makeFirstResponder(overlayView)
+        }
         NSApplication.shared.activate(ignoringOtherApps: true)
         
-        // Add global ESC key monitor
-        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        // Add GLOBAL ESC key monitor (works even when app is not focused)
+        escapeMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            LogService.shared.debug("🌍 GLOBAL key monitor: keyCode=\(event.keyCode), isCapturing=\(self?.isCapturing ?? false)")
             if event.keyCode == 53 {  // ESC key
-                LogService.shared.info("🛑 ESC pressed (global monitor)")
+                LogService.shared.info("🛑 ESC pressed (GLOBAL monitor) - cancelling capture")
+                // Cancel OCR if processing
+                if self?.isProcessing == true {
+                    LogService.shared.info("⏹️  Cancelling OCR processing...")
+                    OCRService.shared.cancelOCR()
+                }
                 self?.endCapture()
-                return nil  // Consume the event
+                // Note: Global monitor cannot consume events, but that's OK for ESC
             }
-            return event
         }
         
         LogService.shared.info("✅ Overlay ready - drag to select")
@@ -91,11 +119,15 @@ class CaptureViewModel: NSObject, ObservableObject {
         LogService.shared.debug("🏁 endCapture() called")
         isCapturing = false
         
+        // Clean up ESC handler
+        EscapeKeyService.shared.onEscapePressed = nil
+        LogService.shared.debug("  ESC handler cleared")
+        
         // Remove escape monitor
         if let monitor = escapeMonitor {
             NSEvent.removeMonitor(monitor)
             escapeMonitor = nil
-            LogService.shared.debug("  ESC monitor removed")
+            LogService.shared.debug("  Local ESC monitor removed")
         }
         
         if let window = captureWindow {
@@ -140,13 +172,33 @@ class CaptureViewModel: NSObject, ObservableObject {
             LogService.shared.info("✅ Image captured in \(Int(captureTime*1000))ms")
             
             self?.capturedImage = image
+            self?.isProcessing = true
             self?.endCapture()
             
-            // OCR
-            LogService.shared.info("🚀 Starting OCR...")
-            ResultViewModel.shared.processImage(image)
-            LogService.shared.info("✅ OCR processing started")
+            // Check if callback is set (for translator view) or use ResultViewModel (for result window)
+            if let callback = self?.captureCallback {
+                LogService.shared.info("🎯 Calling capture callback (translator mode)")
+                callback(image)
+                self?.isProcessing = false
+            } else {
+                // OCR with ResultViewModel (legacy mode)
+                LogService.shared.info("🚀 Starting OCR...")
+                ResultViewModel.shared.processImage(image)
+                LogService.shared.info("✅ OCR processing started")
+                self?.isProcessing = false
+            }
         }
+    }
+}
+
+// Custom NSWindow subclass to handle keyboard events properly
+class CaptureWindow: NSWindow {
+    override var canBecomeKey: Bool {
+        return true
+    }
+    
+    override var canBecomeMain: Bool {
+        return true
     }
 }
 #endif

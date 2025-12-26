@@ -6,6 +6,8 @@ class SimpleOverlayView: NSView {
     private var startPoint = NSPoint.zero
     private var endPoint = NSPoint.zero
     private var isDrawing = false
+    private var onEscapePressed: (() -> Void)?
+    private var escapeMonitor: Any?
     
     override func awakeFromNib() {
         super.awakeFromNib()
@@ -16,6 +18,36 @@ class SimpleOverlayView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         updateCursor()
+        // Ensure window is key when view is added
+        window?.makeKey()
+        // Setup ESC monitor for drag cancellation
+        setupEscapeMonitor()
+    }
+    
+    deinit {
+        // Clean up ESC monitor
+        if let monitor = escapeMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+    }
+    
+    private func setupEscapeMonitor() {
+        print("📡 setupEscapeMonitor() - registering global ESC monitor")
+        // Add local monitor to catch ESC during drag
+        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            print("⌨️  Global monitor received keyDown: keyCode=\(event.keyCode), isDrawing=\(self?.isDrawing ?? false)")
+            if event.keyCode == 53 {  // ESC key
+                print("🛑 ESC pressed during drag - cancelling")
+                LogService.shared.info("🛑 ESC pressed - ending capture from overlay view")
+                // Cancel current drag
+                self?.isDrawing = false
+                self?.onRegionSelected?(.zero)
+                self?.needsDisplay = true
+                return nil  // Consume event
+            }
+            return event
+        }
+        print("✅ Global ESC monitor installed")
     }
     
     private func updateCursor() {
@@ -85,10 +117,15 @@ class SimpleOverlayView: NSView {
     
     // KEYBOARD
     override func keyDown(with event: NSEvent) {
+        print("🎹 keyDown event: keyCode=\(event.keyCode), chars='\(event.characters ?? "")'")
         if event.keyCode == 53 {  // ESC
-            print("🛑 ESC pressed")
+            print("🛑 ESC pressed in overlay view")
             onRegionSelected?(.zero)
         }
+    }
+    
+    func setOnEscapePressed(_ callback: @escaping () -> Void) {
+        onEscapePressed = callback
     }
     
     // Change cursor to crosshair

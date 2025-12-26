@@ -92,7 +92,7 @@ class ResultViewModel: ObservableObject {
         isTranslating = true
         
         Task {
-            let translatedText = await TranslationService.shared.translate(englishText, to: selectedLanguage)
+            let translatedText = await TranslationService.shared.translate(englishText, from: "en", to: selectedLanguage)
             
             DispatchQueue.main.async { [weak self] in
                 self?.translatedText = translatedText

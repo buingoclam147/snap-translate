@@ -70,21 +70,13 @@ class StatusBarManager {
                 button.image = image
                 print("✅ Using fallback system icon")
             }
+            
+            // Set button action to show translator popover
+            button.target = self
+            button.action = #selector(buttonClicked)
         } else {
             print("❌ Failed to get status bar button")
         }
-        
-        // Create menu
-        let menu = NSMenu()
-        
-        // Capture & Translate item
-        captureMenuItem = NSMenuItem(
-            title: "Capture & Translate",
-            action: #selector(captureAndTranslate),
-            keyEquivalent: ""
-        )
-        captureMenuItem?.target = self
-        menu.addItem(captureMenuItem!)
         
         // Listen for hotkey changes to reload listener
         NotificationCenter.default.addObserver(
@@ -98,19 +90,56 @@ class StatusBarManager {
             }
         }
         
-        // Settings item - opens hotkey settings popover
-        let settingsItem = NSMenuItem(
-            title: "Hotkey Settings",
-            action: #selector(openSettings),
-            keyEquivalent: ""
-        )
-        settingsItem.target = self
-        menu.addItem(settingsItem)
+        print("✅ Status bar icon created")
+    }
+    
+    private var translatorPopover: NSPopover?
+    
+    @objc private func buttonClicked() {
+        showTranslatorPopover()
+    }
+    
+    func showTranslatorPopover() {
+        print("📝 Opening translator popover")
+        guard let button = statusItem?.button else { return }
         
-        // Support submenu
+        translatorPopover = NSPopover()
+        translatorPopover?.contentViewController = NSHostingController(
+            rootView: TranslatorPopoverView(
+                onClose: {
+                    self.translatorPopover?.performClose(nil)
+                },
+                onOCRTapped: {
+                    print("🎯 OCR tapped - hiding popover for capture")
+                    // Hide translator popover before capturing
+                    self.translatorPopover?.performClose(nil)
+                    
+                    // Start capture
+                    CaptureViewModel.shared.startCapture { image in
+                        print("📸 Capture completed - showing popover again")
+                        // Set captured image directly to translator view model
+                        TranslatorViewModel.shared.capturedImage = image
+                        
+                        // Re-show popover after capture
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            self.showTranslatorPopover()
+                        }
+                    }
+                },
+                onSupportTapped: {
+                    self.showSupportMenu()
+                }
+            )
+        )
+        translatorPopover?.behavior = .transient
+        translatorPopover?.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+    }
+    
+    private func showSupportMenu() {
+        guard let button = statusItem?.button else { return }
+        
         let supportMenu = NSMenu()
         
-        // Sponsors
         let sponsorsItem = NSMenuItem(
             title: "Support Development",
             action: #selector(openSponsorsLink),
@@ -119,7 +148,6 @@ class StatusBarManager {
         sponsorsItem.target = self
         supportMenu.addItem(sponsorsItem)
         
-        // Contact email
         let emailItem = NSMenuItem(
             title: "Email: buingoclam00@gmail.com",
             action: #selector(copyEmail),
@@ -128,7 +156,6 @@ class StatusBarManager {
         emailItem.target = self
         supportMenu.addItem(emailItem)
         
-        // LinkedIn
         let linkedinItem = NSMenuItem(
             title: "LinkedIn Profile",
             action: #selector(openLinkedInLink),
@@ -137,26 +164,20 @@ class StatusBarManager {
         linkedinItem.target = self
         supportMenu.addItem(linkedinItem)
         
-        // Support menu item
-        let supportItem = NSMenuItem(title: "Support & Help", action: nil, keyEquivalent: "")
-        supportItem.submenu = supportMenu
-        menu.addItem(supportItem)
+        supportMenu.addItem(NSMenuItem.separator())
         
-        // Separator
-        menu.addItem(NSMenuItem.separator())
-        
-        // Quit item
         let quitItem = NSMenuItem(
             title: "Quit TSnap",
             action: #selector(quitApp),
             keyEquivalent: ""
         )
         quitItem.target = self
-        menu.addItem(quitItem)
+        supportMenu.addItem(quitItem)
         
-        statusItem?.menu = menu
-        
-        print("✅ Status bar icon created")
+        // Create event for menu location
+        if let event = NSApplication.shared.currentEvent {
+            NSMenu.popUpContextMenu(supportMenu, with: event, for: button)
+        }
     }
     
     @objc private func captureAndTranslate() {

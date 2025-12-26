@@ -3,12 +3,14 @@ import Foundation
 class TranslationService {
     static let shared = TranslationService()
     
-    // Custom Translation API Server (Render.com)
-    // POST /api/translate with JSON body
-    private let apiURL = "https://esnap-translation-api.onrender.com/api/translate"
-    private let maxCharacters = 1500  // Server limit is 1500 characters
+    // Translation manager with fallback mechanism
+    private let manager = TranslationManager.shared
     
-    // Supported language pairs (source=English, target=various)
+    // Retry configuration
+    private let maxRetries = 3
+    private let retryDelay: UInt64 = 1_000_000_000  // 1 second in nanoseconds
+    
+    // Supported language pairs
     let supportedLanguages: [String: String] = [
         "vi": "Vietnamese",
         "es": "Spanish",
@@ -26,82 +28,100 @@ class TranslationService {
         "id": "Indonesian"
     ]
     
+    // Track API status for user notifications
+    private var lastErrorMessage: String = ""
+    
     private init() {
-        print("✅ TranslationService initialized - Multi-language via Custom API Server")
+        print("✅ TranslationService initialized - Using Public APIs with Fallback Mechanism")
     }
     
-    /// Translate English text to target language using custom translation API
-    func translate(_ text: String, to languageCode: String) async -> String {
+    /// Translate text between any languages with automatic fallback
+    func translate(_ text: String, from sourceLanguage: String, to targetLanguage: String) async -> String {
         guard !text.isEmpty else { return "" }
         
         let charCount = text.count
         print("📊 Text has \(charCount) characters")
+        print("   Debug: \(text) (bytes: \(text.utf8.count))")
         
-        // Check character limit (1500 chars max per server)
-        if charCount > maxCharacters {
-            print("⚠️ Text exceeds \(maxCharacters) character limit")
-            return "[Translation error: Text exceeds \(maxCharacters) character limit. Please use shorter text.]"
-        }
-        
-        return await translateText(text, languageCode: languageCode)
+        // Use translation manager with retry logic
+        return await translateWithRetry(text, from: sourceLanguage, to: targetLanguage)
     }
     
-    /// Translate text using custom API server
-    private func translateText(_ text: String, languageCode: String) async -> String {
-        do {
-            guard let url = URL(string: apiURL) else {
-                print("⚠️ Invalid API URL")
-                return text
+    /// Translate with retry mechanism (try up to maxRetries times)
+    private func translateWithRetry(_ text: String, from sourceLanguage: String, to targetLanguage: String) async -> String {
+        print("\n" + String(repeating: "📡", count: 60))
+        print("📡📡📡 TranslationService.translateWithRetry() 📡📡📡")
+        print(String(repeating: "📡", count: 60))
+        print("📤 Sending to translation API: \(text.prefix(60))...")
+        print("   Input length: \(text.count) chars")
+        print("   Lang: \(sourceLanguage) → \(targetLanguage)")
+        
+        for attempt in 1...maxRetries {
+            print("\n🔁 ATTEMPT \(attempt)/\(maxRetries):")
+            let result = await manager.translate(text, from: sourceLanguage, to: targetLanguage)
+            
+            if result.isSuccess {
+                print("\n✅ Translation successful!")
+                print("   Provider: \(result.provider)")
+                print("   Output length: \(result.text.count) chars")
+                print("   Output: \(result.text.prefix(100))...")
+                print(String(repeating: "✅", count: 60) + "\n")
+                return result.text
             }
             
-            print("📤 Sending to translation API: \(text.prefix(60))...")
-            
-            // Build request body
-            let requestBody: [String: Any] = [
-                "text": text,
-                "target_language": languageCode
-            ]
-            
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.timeoutInterval = 30  // 30 second timeout
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-            
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                print("⚠️ Invalid response type from translation API")
-                return text
+            print("   ❌ This attempt failed!")
+            if let error = result.error {
+                print("   Error details:\n\(error)")
             }
             
-            guard httpResponse.statusCode == 200 else {
-                print("⚠️ Translation API error: HTTP \(httpResponse.statusCode)")
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let errorMsg = json["message"] as? String {
-                    print("   Error: \(errorMsg)")
-                }
-                return text
+            // Don't retry on the last attempt
+            if attempt < maxRetries {
+                try? await Task.sleep(nanoseconds: retryDelay)
+                print("\n⏳ Waiting 1 second before retry...")
+                print("🔄 Retrying with next attempt...\n")
             }
-            
-            // Parse response
-            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let success = json["success"] as? Bool,
-               success,
-               let translatedText = json["translated_text"] as? String,
-               !translatedText.isEmpty {
-                
-                let processingTime = json["processing_time_ms"] as? Int ?? 0
-                print("✅ Translation to \(languageCode) completed in \(processingTime)ms: \(text.prefix(50))... → \(translatedText.prefix(50))...")
-                return translatedText
-            }
-            
-            print("⚠️ Failed to parse translation response")
-            return text
-            
-        } catch {
-            print("❌ Translation error: \(error.localizedDescription)")
-            return text
         }
+        
+        print("\n" + String(repeating: "⚠️", count: 60))
+        print("⚠️ ALL \(maxRetries) ATTEMPTS FAILED")
+        print(String(repeating: "⚠️", count: 60))
+        
+        // All retries failed - show error message
+        return await handleAllProvidersFailed(text, from: sourceLanguage, to: targetLanguage)
+    }
+    
+    /// Handle case when all providers fail
+    private func handleAllProvidersFailed(_ text: String, from sourceLanguage: String, to targetLanguage: String) async -> String {
+        print("\n" + String(repeating: "❌", count: 60))
+        print("❌ FINAL FAILURE: All translation providers failed")
+        print("❌ Language pair: \(sourceLanguage) → \(targetLanguage)")
+        print("❌ Text: \(text.prefix(80))")
+        print(String(repeating: "❌", count: 60) + "\n")
+        
+        let errorMessage = """
+        ⚠️ Lỗi Dịch Thuật
+        
+        Không thể dịch văn bản lúc này. Các API dịch thuật đã fail sau 3 lần thử.
+        Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.
+        
+        Liên hệ hỗ trợ: buingoclam00@gmail.com
+        
+        ⚠️ Translation Error
+        
+        Failed to translate after 3 retry attempts.
+        Please check your network connection or try again later.
+        
+        Contact support: buingoclam00@gmail.com
+        """
+        
+        lastErrorMessage = errorMessage
+        print(errorMessage)
+        
+        return text  // Return original text on complete failure
+    }
+    
+    /// Get last error message (useful for UI display)
+    func getLastError() -> String {
+        return lastErrorMessage
     }
 }

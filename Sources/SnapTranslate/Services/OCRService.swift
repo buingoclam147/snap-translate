@@ -6,10 +6,14 @@ import Vision
 class OCRService {
     static let shared = OCRService()
     
+    private var currentTask: Task<String, Never>?
+    var isCancelled = false
+    
     /// Extract text from an image using Vision Framework
     /// - Parameter image: NSImage to process
     /// - Returns: Extracted text string
     func extractText(from image: NSImage) -> String {
+        isCancelled = false
         guard let cgImage = image.toCGImage() else {
             print("❌ Failed to convert NSImage to CGImage")
             return ""
@@ -53,6 +57,12 @@ class OCRService {
             print("❌ OCR error: \(error.localizedDescription)")
             return ""
         }
+    }
+    
+    func cancelOCR() {
+        print("🛑 OCR cancelled by user")
+        isCancelled = true
+        currentTask?.cancel()
     }
 }
 
