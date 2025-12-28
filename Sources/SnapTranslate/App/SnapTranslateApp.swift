@@ -205,7 +205,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private func startEscapeKeyListener() {
         print("🎯 EscapeKeyService setup starting...")
         
+        // Handle translate hotkey (Cmd+Shift+X)
+        EscapeKeyService.shared.onTranslateHotkey = { selectedText in
+            print("\n🔥🔥🔥 TRANSLATE HOTKEY TRIGGERED - Cmd+Shift+X DETECTED 🔥🔥🔥")
+            print("📝 Selected text: \(selectedText)\n")
+            
+            DispatchQueue.main.async {
+                // Set text to translator and show popover
+                TranslatorViewModel.shared.setTextFromHotkey(selectedText)
+                
+                // Show translator popover from menu bar
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    StatusBarManager.shared.showTranslatorPopover()
+                }
+            }
+        }
+        
         EscapeKeyService.shared.start()
-        print("✅ EscapeKeyService is now ACTIVE - listening for ESC key\n")
+        print("✅ EscapeKeyService is now ACTIVE - listening for ESC key and Cmd+Shift+X\n")
     }
 }
