@@ -97,20 +97,20 @@ class CaptureViewModel: NSObject, ObservableObject {
         }
         NSApplication.shared.activate(ignoringOtherApps: true)
         
-        // Add GLOBAL ESC key monitor (works even when app is not focused)
-        escapeMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            LogService.shared.debug("🌍 GLOBAL key monitor: keyCode=\(event.keyCode), isCapturing=\(self?.isCapturing ?? false)")
-            if event.keyCode == 53 {  // ESC key
-                LogService.shared.info("🛑 ESC pressed (GLOBAL monitor) - cancelling capture")
-                // Cancel OCR if processing
-                if self?.isProcessing == true {
-                    LogService.shared.info("⏹️  Cancelling OCR processing...")
-                    OCRService.shared.cancelOCR()
-                }
-                self?.endCapture()
-                // Note: Global monitor cannot consume events, but that's OK for ESC
-            }
+        // Start global mouse monitoring for overlay drag
+        EscapeKeyService.shared.onMouseDown = { [weak self] event in
+            LogService.shared.debug("🖱️ Mouse DOWN received in overlay")
         }
+        
+        EscapeKeyService.shared.onMouseDragged = { [weak self] event in
+            LogService.shared.debug("🖱️ Mouse DRAGGED received in overlay")
+        }
+        
+        EscapeKeyService.shared.onMouseUp = { [weak self] event in
+            LogService.shared.debug("🖱️ Mouse UP received in overlay")
+        }
+        
+        EscapeKeyService.shared.startMouseMonitoring()
         
         LogService.shared.info("✅ Overlay ready - drag to select")
     }
@@ -121,7 +121,14 @@ class CaptureViewModel: NSObject, ObservableObject {
         
         // Clean up ESC handler
         EscapeKeyService.shared.onEscapePressed = nil
-        LogService.shared.debug("  ESC handler cleared")
+        EscapeKeyService.shared.onMouseDown = nil
+        EscapeKeyService.shared.onMouseDragged = nil
+        EscapeKeyService.shared.onMouseUp = nil
+        LogService.shared.debug("  All event handlers cleared")
+        
+        // Stop mouse monitoring
+        EscapeKeyService.shared.stopMouseMonitoring()
+        LogService.shared.debug("  Mouse monitoring stopped")
         
         // Remove escape monitor
         if let monitor = escapeMonitor {

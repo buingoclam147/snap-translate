@@ -1,0 +1,51 @@
+name: Build & Release DMG
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v1
+      
+      - name: Build & Notarize App
+        env:
+          DEVELOPER_ID: ${{ secrets.DEVELOPER_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+        run: |
+          echo "🚀 Building TSnap Release..."
+          chmod +x ./build-release.sh
+          ./build-release.sh
+      
+      - name: Check release files
+        run: |
+          echo "📦 Release files created:"
+          ls -lh releases/
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            releases/TSnap.dmg
+            releases/TSnap.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload to release
+        run: |
+          echo "✅ Release uploaded to GitHub!"
+          echo "📥 Users can download from:"
+          echo "   https://github.com/${{ github.repository }}/releases"
