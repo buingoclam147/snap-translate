@@ -190,7 +190,7 @@ class StatusBarManager {
         showHotKeySettingsPopover()
     }
     
-    private func showHotKeySettingsPopover() {
+    func showHotKeySettingsPopover() {
         guard let button = statusItem?.button else { return }
         
         let popover = NSPopover()

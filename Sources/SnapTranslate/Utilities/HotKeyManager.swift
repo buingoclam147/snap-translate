@@ -8,17 +8,42 @@ class HotKeyManager {
     static let shared = HotKeyManager()
     
     private let defaults = UserDefaults.standard
-    private let key = "SnapTranslateHotKey"
+    private let ocrKey = "SnapTranslateOCRHotKey"
+    private let translateKey = "SnapTranslateTranslateHotKey"
     
-    /// Get current saved hotkey string (default: "Cmd+Shift+C")
-    func getSavedHotKey() -> String {
-        return defaults.string(forKey: key) ?? "Cmd+Shift+C"
+    // Legacy key for backwards compatibility
+    private let legacyKey = "SnapTranslateHotKey"
+    
+    /// Get OCR hotkey (default: "Cmd+Shift+C")
+    func getOCRHotKey() -> String {
+        return defaults.string(forKey: ocrKey) ?? "Cmd+Shift+C"
     }
     
-    /// Save hotkey to UserDefaults
+    /// Get translate hotkey (default: "Cmd+Shift+X")
+    func getTranslateHotKey() -> String {
+        return defaults.string(forKey: translateKey) ?? "Cmd+Shift+X"
+    }
+    
+    /// Get current saved hotkey string (legacy - returns OCR hotkey)
+    func getSavedHotKey() -> String {
+        return getOCRHotKey()
+    }
+    
+    /// Save OCR hotkey to UserDefaults
+    func saveOCRHotKey(_ hotKey: String) {
+        defaults.set(hotKey, forKey: ocrKey)
+        print("💾 OCR Hotkey saved: \(hotKey)")
+    }
+    
+    /// Save translate hotkey to UserDefaults
+    func saveTranslateHotKey(_ hotKey: String) {
+        defaults.set(hotKey, forKey: translateKey)
+        print("💾 Translate Hotkey saved: \(hotKey)")
+    }
+    
+    /// Save hotkey to UserDefaults (legacy)
     func saveHotKey(_ hotKey: String) {
-        defaults.set(hotKey, forKey: key)
-        print("💾 Hotkey saved: \(hotKey)")
+        saveOCRHotKey(hotKey)
     }
     
     /// Parse hotkey string to (keyCode, modifiers)

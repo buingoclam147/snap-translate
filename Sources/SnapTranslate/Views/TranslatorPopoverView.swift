@@ -415,7 +415,7 @@ struct TranslatorPopoverView: View {
             }
             .padding(12)
         }
-        .frame(width: 700, height: 450)
+        .frame(width: 600, height: 400)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             print("\n" + String(repeating: "=", count: 70))
@@ -430,6 +430,23 @@ struct TranslatorPopoverView: View {
                 print(String(repeating: "✋", count: 40) + "\n")
                 onClose?()
             }
+            
+            // Listen for settings button click
+            NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("OpenTranslatorSettings"),
+                object: nil,
+                queue: .main
+            ) { _ in
+                print("\n" + String(repeating: "⚙️ ", count: 25))
+                print("⚙️  SETTINGS BUTTON CLICKED - Opening settings")
+                print(String(repeating: "⚙️ ", count: 25) + "\n")
+                onClose?()
+                
+                // Close current popover and show settings
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    StatusBarManager.shared.showHotKeySettingsPopover()
+                }
+            }
         }
         .onDisappear {
             print("\n" + String(repeating: "-", count: 70))
@@ -437,6 +454,7 @@ struct TranslatorPopoverView: View {
             print(String(repeating: "-", count: 70) + "\n")
             // Clear handler when popover closes
             EscapeKeyService.shared.onEscapePressed = nil
+            NotificationCenter.default.removeObserver(self, name: NSNotification.Name("OpenTranslatorSettings"), object: nil)
         }
     }
 }

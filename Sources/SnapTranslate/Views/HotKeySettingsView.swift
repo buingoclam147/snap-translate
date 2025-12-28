@@ -2,11 +2,11 @@ import SwiftUI
 import AppKit
 
 struct HotKeySettingsView: View {
-    @State private var hotKeyDisplay = ""
-    @State private var isRecording = false
-    @State private var recordedKeys: [String] = []
+    @State private var ocrHotkey = ""
+    @State private var translateHotkey = ""
+    @State private var isRecordingOCR = false
+    @State private var isRecordingTranslate = false
     @State private var recordingText = ""
-    @State private var reminderEnabled = false
     @State private var eventMonitor: Any?
     @Environment(\.dismiss) var dismiss
     
@@ -26,16 +26,15 @@ struct HotKeySettingsView: View {
             
             Divider()
             
-            // Hotkey Section
+            // OCR Hotkey Section
             VStack(alignment: .leading, spacing: 8) {
-                Text("Hotkey")
+                Text("OCR Hotkey")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.secondary)
                 
-                if !isRecording {
-                    // Display mode
+                if !isRecordingOCR {
                     HStack {
-                        Text(hotKeyDisplay)
+                        Text(ocrHotkey)
                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
                             .padding(8)
                             .background(Color(nsColor: .controlBackgroundColor))
@@ -43,91 +42,135 @@ struct HotKeySettingsView: View {
                         
                         Spacer()
                         
-                        Button(action: {
-                            isRecording = true
-                            recordedKeys = []
-                            recordingText = "Press keys..."
-                            startRecording()
-                        }) {
+                        Button(action: startRecordingOCR) {
                             Image(systemName: "pencil.circle.fill")
                                 .font(.system(size: 16))
                                 .foregroundColor(.blue)
                         }
                         .buttonStyle(.plain)
+                        .help("Edit OCR hotkey")
                     }
                 } else {
-                    // Recording mode
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: "circle.fill")
-                                .font(.system(size: 6))
-                                .foregroundColor(.red)
-                            Text("Recording - Press hotkey combination")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Text(recordingText)
-                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                            .padding(8)
-                            .background(Color(nsColor: .controlBackgroundColor))
-                            .cornerRadius(4)
-                            .frame(maxWidth: .infinity)
-                        
-                        HStack(spacing: 8) {
-                            Button("Cancel") {
-                                stopRecording()
-                                isRecording = false
-                            }
-                            .keyboardShortcut(.cancelAction)
-                            
-                            Spacer()
-                            
-                            Button("Save") {
-                                hotKeyDisplay = recordingText
-                                HotKeyManager.shared.saveHotKey(recordingText)
-                                // Notify home screen to update
-                                NotificationCenter.default.post(name: NSNotification.Name("HotKeyChanged"), object: recordingText)
-                                stopRecording()
-                                isRecording = false
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(recordingText == "Press keys...")
-                        }
-                        .font(.system(size: 11))
-                    }
+                    recordingSection(title: "Recording OCR hotkey...", isOCR: true)
                 }
             }
             
             Divider()
             
-            // Reset button
-            Button(action: {
-                let defaultKey = "Cmd+Shift+C"
-                hotKeyDisplay = defaultKey
-                HotKeyManager.shared.saveHotKey(defaultKey)
-                NotificationCenter.default.post(name: NSNotification.Name("HotKeyChanged"), object: defaultKey)
-            }) {
+            // Translate Hotkey Section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Translate Hotkey")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                if !isRecordingTranslate {
+                    HStack {
+                        Text(translateHotkey)
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .padding(8)
+                            .background(Color(nsColor: .controlBackgroundColor))
+                            .cornerRadius(4)
+                        
+                        Spacer()
+                        
+                        Button(action: startRecordingTranslate) {
+                            Image(systemName: "pencil.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.blue)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Edit translate hotkey")
+                    }
+                } else {
+                    recordingSection(title: "Recording translate hotkey...", isOCR: false)
+                }
+            }
+            
+            Divider()
+            
+            // Reset Hotkey button
+            Button(action: resetHotkeys) {
                 Label("Reset to Default", systemImage: "arrow.counterclockwise")
                     .font(.system(size: 11))
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             
-            Spacer()
+            Divider()
+            
+            // Close App button
+            Button(action: closeApp) {
+                Label("Close App", systemImage: "xmark.circle.fill")
+                    .font(.system(size: 11))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .foregroundColor(.white)
+            .tint(.red)
         }
         .padding(12)
-        .frame(width: 300)
-        .onAppear {
-            hotKeyDisplay = HotKeyManager.shared.getSavedHotKey()
-            reminderEnabled = UserDefaults.standard.bool(forKey: "SnapTranslateReminder")
-        }
-        .onDisappear {
-            stopRecording()
+        .frame(width: 320, height: 340)
+        .onAppear(perform: loadHotkeys)
+        .onDisappear(perform: stopRecording)
+    }
+    
+    // MARK: - Recording Section Component
+    
+    @ViewBuilder
+    private func recordingSection(title: String, isOCR: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "circle.fill")
+                    .font(.system(size: 6))
+                    .foregroundColor(.red)
+                Text(title)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            
+            Text(recordingText)
+                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .padding(8)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .cornerRadius(4)
+                .frame(maxWidth: .infinity)
+            
+            HStack(spacing: 8) {
+                Button("Cancel") {
+                    stopRecording()
+                    isRecordingOCR = false
+                    isRecordingTranslate = false
+                }
+                .keyboardShortcut(.cancelAction)
+                
+                Spacer()
+                
+                Button("Save") {
+                    saveRecordedHotkey(isOCR: isOCR)
+                    stopRecording()
+                    isRecordingOCR = false
+                    isRecordingTranslate = false
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(recordingText == "Press keys...")
+            }
+            .font(.system(size: 11))
         }
     }
     
-    // MARK: - Key Recording
+    // MARK: - Recording Handlers
+    
+    private func startRecordingOCR() {
+        isRecordingOCR = true
+        recordingText = "Press keys..."
+        startRecording()
+    }
+    
+    private func startRecordingTranslate() {
+        isRecordingTranslate = true
+        recordingText = "Press keys..."
+        startRecording()
+    }
     
     private func startRecording() {
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
@@ -155,7 +198,6 @@ struct HotKeySettingsView: View {
         if let keyName = getKeyName(for: keyCode) {
             display += keyName
             recordingText = display
-            recordedKeys = [keyName]
         }
     }
     
@@ -189,6 +231,88 @@ struct HotKeySettingsView: View {
         case 46: return "M"
         default: return nil
         }
+    }
+    
+    // MARK: - Save & Reset Logic
+    
+    private func saveRecordedHotkey(isOCR: Bool) {
+        if isOCR {
+            ocrHotkey = recordingText
+            HotKeyManager.shared.saveOCRHotKey(recordingText)
+            print("💾 OCR Hotkey saved: \(recordingText)")
+            
+            // Update HotKeyService to re-register the hotkey
+            HotKeyService.shared.updateAndRegisterHotkey(for: "ocr", hotKey: recordingText)
+            
+            NotificationCenter.default.post(name: NSNotification.Name("OCRHotKeyChanged"), object: recordingText)
+        } else {
+            translateHotkey = recordingText
+            HotKeyManager.shared.saveTranslateHotKey(recordingText)
+            print("💾 Translate Hotkey saved: \(recordingText)")
+            
+            // Update hotkey for translate
+            updateTranslateHotkey(recordingText)
+            
+            NotificationCenter.default.post(name: NSNotification.Name("TranslateHotKeyChanged"), object: recordingText)
+        }
+    }
+    
+    private func resetHotkeys() {
+        ocrHotkey = "Cmd+Shift+C"
+        translateHotkey = "Cmd+Shift+X"
+        
+        HotKeyManager.shared.saveOCRHotKey("Cmd+Shift+C")
+        HotKeyManager.shared.saveTranslateHotKey("Cmd+Shift+X")
+        
+        HotKeyService.shared.updateAndRegisterHotkey(for: "ocr", hotKey: "Cmd+Shift+C")
+        updateTranslateHotkey("Cmd+Shift+X")
+        
+        print("🔄 All hotkeys reset to default")
+        
+        NotificationCenter.default.post(name: NSNotification.Name("OCRHotKeyChanged"), object: "Cmd+Shift+C")
+        NotificationCenter.default.post(name: NSNotification.Name("TranslateHotKeyChanged"), object: "Cmd+Shift+X")
+    }
+    
+    private func closeApp() {
+        NSApplication.shared.terminate(nil)
+    }
+    
+    private func loadHotkeys() {
+        ocrHotkey = HotKeyManager.shared.getOCRHotKey()
+        translateHotkey = HotKeyManager.shared.getTranslateHotKey()
+    }
+    
+    private func updateTranslateHotkey(_ hotKey: String) {
+        // Parse and update EscapeKeyService with new hotkey
+        let parts = hotKey.components(separatedBy: "+")
+        var keyCode: UInt16 = 7  // Default to X
+        var modifiers = NSEvent.ModifierFlags()
+        
+        for part in parts {
+            switch part.lowercased() {
+            case "cmd":
+                modifiers.insert(.command)
+            case "shift":
+                modifiers.insert(.shift)
+            case "ctrl":
+                modifiers.insert(.control)
+            case "opt", "option":
+                modifiers.insert(.option)
+            case "x":
+                keyCode = 7
+            case "c":
+                keyCode = 8
+            case "v":
+                keyCode = 9
+            default:
+                break
+            }
+        }
+        
+        // Store in UserDefaults for EscapeKeyService to use
+        UserDefaults.standard.set(hotKey, forKey: "SnapTranslateHotKey")
+        
+        print("✅ Translate hotkey updated to: \(hotKey)")
     }
 }
 

@@ -136,6 +136,26 @@ class HotKeyService: NSObject {
         }
     }
     
+    /// Update hotkey and re-register it immediately
+    func updateAndRegisterHotkey(for type: String, hotKey: String) {
+        print("\n" + String(repeating: "🔄", count: 35))
+        print("🔄 Updating hotkey: \(hotKey)")
+        print(String(repeating: "🔄", count: 35) + "\n")
+        
+        // Unregister old hotkey
+        if let ref = hotKeyRef {
+            UnregisterEventHotKey(ref)
+            hotKeyRef = nil
+            print("✅ Old hotkey unregistered")
+        }
+        
+        // Save new hotkey
+        HotKeyManager.shared.saveOCRHotKey(hotKey)
+        
+        // Re-register with new hotkey
+        registerGlobalHotkey()
+    }
+    
     func stop() {
         if let ref = hotKeyRef {
             UnregisterEventHotKey(ref)

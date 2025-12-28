@@ -139,16 +139,15 @@ class EscapeKeyService: NSObject {
             return
         }
         
-        // Monitor for Cmd+Shift+X hotkey
+        // Monitor for translate hotkey
         hotkeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            // Check if Cmd+Shift+X is pressed
-            let cmdKey = event.modifierFlags.contains(.command)
-            let shiftKey = event.modifierFlags.contains(.shift)
-            let isXKey = event.keyCode == 7  // keyCode for 'x'
+            // Get current saved translate hotkey from UserDefaults
+            let savedHotkey = UserDefaults.standard.string(forKey: "SnapTranslateTranslateHotKey") ?? "Cmd+Shift+X"
             
-            if cmdKey && shiftKey && isXKey {
+            // Check if the pressed key matches the configured hotkey
+            if self?.matchesHotkey(event: event, hotkey: savedHotkey) ?? false {
                 print("\n" + String(repeating: "⌨️ ", count: 25))
-                print("⌨️  CMD+SHIFT+X DETECTED - Translate Selected Text")
+                print("⌨️  TRANSLATE HOTKEY DETECTED - \(savedHotkey)")
                 print(String(repeating: "⌨️ ", count: 25) + "\n")
                 
                 // Get selected text by triggering Cmd+C
@@ -165,8 +164,62 @@ class EscapeKeyService: NSObject {
             }
         }
         
+        let savedHotkey = UserDefaults.standard.string(forKey: "SnapTranslateTranslateHotKey") ?? "Cmd+Shift+X"
         print("✅ GLOBAL hotkey monitor installed successfully")
-        print("✅ Listening for Cmd+Shift+X (keyCode 7) - GLOBALLY\n")
+        print("✅ Listening for \(savedHotkey) - GLOBALLY\n")
+    }
+    
+    private func matchesHotkey(event: NSEvent, hotkey: String) -> Bool {
+        let parts = hotkey.components(separatedBy: "+")
+        
+        var expectedModifiers = NSEvent.ModifierFlags()
+        var expectedKeyCode: UInt16 = 7  // Default to X
+        
+        for part in parts {
+            switch part.lowercased() {
+            case "cmd":
+                expectedModifiers.insert(.command)
+            case "shift":
+                expectedModifiers.insert(.shift)
+            case "ctrl":
+                expectedModifiers.insert(.control)
+            case "opt", "option":
+                expectedModifiers.insert(.option)
+            case "x":
+                expectedKeyCode = 7
+            case "c":
+                expectedKeyCode = 8
+            case "v":
+                expectedKeyCode = 9
+            case "a": expectedKeyCode = 0
+            case "s": expectedKeyCode = 1
+            case "d": expectedKeyCode = 2
+            case "f": expectedKeyCode = 3
+            case "h": expectedKeyCode = 4
+            case "g": expectedKeyCode = 5
+            case "z": expectedKeyCode = 6
+            case "b": expectedKeyCode = 11
+            case "q": expectedKeyCode = 12
+            case "w": expectedKeyCode = 13
+            case "e": expectedKeyCode = 14
+            case "r": expectedKeyCode = 15
+            case "y": expectedKeyCode = 16
+            case "t": expectedKeyCode = 17
+            case "o": expectedKeyCode = 31
+            case "u": expectedKeyCode = 32
+            case "i": expectedKeyCode = 34
+            case "p": expectedKeyCode = 35
+            case "l": expectedKeyCode = 37
+            case "j": expectedKeyCode = 38
+            case "k": expectedKeyCode = 40
+            case "n": expectedKeyCode = 45
+            case "m": expectedKeyCode = 46
+            default: break
+            }
+        }
+        
+        let eventModifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        return event.keyCode == expectedKeyCode && eventModifiers == expectedModifiers
     }
     
     func stop() {
