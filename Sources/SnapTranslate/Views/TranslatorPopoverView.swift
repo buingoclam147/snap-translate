@@ -350,7 +350,9 @@ struct TranslatorPopoverView: View {
                                 .disabled(viewModel.sourceText.isEmpty)
                                 
                                 // Read button
-                                Button(action: { }) {
+                                Button(action: {
+                                    SpeechService.shared.speak(viewModel.sourceText, languageCode: viewModel.sourceLanguage)
+                                }) {
                                     Image(systemName: "speaker.wave.2")
                                         .font(.system(size: 12))
                                         .foregroundColor(.blue)
@@ -415,7 +417,7 @@ struct TranslatorPopoverView: View {
             }
             .padding(12)
         }
-        .frame(width: 600, height: 400)
+        .frame(width: 600, height: 450)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             print("\n" + String(repeating: "=", count: 70))
