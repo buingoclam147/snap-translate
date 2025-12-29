@@ -322,6 +322,12 @@ struct TranslatorPopoverView: View {
                                 isInputFocused = true
                             }
                             .addPasteShortcut(viewModel: viewModel)
+                            .onKeyPressESC {
+                                print("\n" + String(repeating: "🔑", count: 40))
+                                print("🔑🔑🔑 INPUT FOCUSED: ESC Pressed - CLOSING Popover 🔑🔑🔑")
+                                print(String(repeating: "🔑", count: 40) + "\n")
+                                onClose?()
+                            }
                         
                         VStack(alignment: .trailing, spacing: 6) {
                             // Clear button (X) - top right
@@ -474,6 +480,24 @@ extension View {
                 self.onKeyPress { keyPress in
                     if keyPress.modifiers.contains(.command) && keyPress.characters == "v" {
                         viewModel.pasteFromClipboard()
+                        return .handled
+                    }
+                    return .ignored
+                }
+            )
+        }
+        #endif
+        return AnyView(self)
+    }
+    
+    func onKeyPressESC(action: @escaping () -> Void) -> some View {
+        #if os(macOS)
+        if #available(macOS 14.0, *) {
+            return AnyView(
+                self.onKeyPress { keyPress in
+                    // ESC key has keyCode 53
+                    if keyPress.key == .escape {
+                        action()
                         return .handled
                     }
                     return .ignored
