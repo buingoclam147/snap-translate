@@ -302,40 +302,11 @@ Found a bug or have a feature request?
 - **Email**: buingoclam00@gmail.com
 - **LinkedIn**: [Bui Lam Frontend](https://www.linkedin.com/in/bui-lam-frontend/)
 
-### 📝 Contributions
-
-Want to contribute?
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
 ---
 
 ## 📄 License
 
 TSnap is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-## 🗺️ Roadmap
-
-### Coming Soon
-- [ ] Context menu integration
-- [ ] Hotkey indicator
-- [ ] Translation history
-- [ ] Multiple captures in one session
-- [ ] Batch translation
-- [ ] Custom dictionary support
-- [ ] Offline translation mode
-
-### Under Consideration
-- [ ] iOS/iPadOS companion app
-- [ ] Cloud sync (optional)
-- [ ] Pro version with advanced features
-- [ ] Plugin support
 
 ---
 
