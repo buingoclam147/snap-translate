@@ -10,6 +10,7 @@ class HotKeyManager {
     private let defaults = UserDefaults.standard
     private let ocrKey = "SnapTranslateOCRHotKey"
     private let translateKey = "SnapTranslateTranslateHotKey"
+    private let prioritizeChineseOCRKey = "SnapTranslatePrioritizeChineseOCR"
     
     // Legacy key for backwards compatibility
     private let legacyKey = "SnapTranslateHotKey"
@@ -39,6 +40,17 @@ class HotKeyManager {
     func saveTranslateHotKey(_ hotKey: String) {
         defaults.set(hotKey, forKey: translateKey)
         print("💾 Translate Hotkey saved: \(hotKey)")
+    }
+    
+    /// Get prioritize Chinese OCR setting (default: false)
+    func getPrioritizeChineseOCR() -> Bool {
+        return defaults.bool(forKey: prioritizeChineseOCRKey)
+    }
+    
+    /// Save prioritize Chinese OCR setting
+    func savePrioritizeChineseOCR(_ enabled: Bool) {
+        defaults.set(enabled, forKey: prioritizeChineseOCRKey)
+        print("💾 Prioritize Chinese OCR: \(enabled)")
     }
     
     /// Save hotkey to UserDefaults (legacy)

@@ -111,6 +111,12 @@ class TranslatorViewModel: ObservableObject {
         translatedText = tempText
     }
     
+    func setPrioritizeChineseLanguages() {
+        // Set source to Chinese and target to English for Chinese OCR prioritization
+        sourceLanguage = "zh"  // Chinese
+        targetLanguage = "en"  // English
+    }
+    
     func copySourceText() {
         #if os(macOS)
         NSPasteboard.general.clearContents()
