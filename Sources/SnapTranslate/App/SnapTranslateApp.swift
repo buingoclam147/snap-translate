@@ -173,6 +173,42 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         DispatchQueue.main.async {
             print("🎯 Setting up status bar in applicationDidFinishLaunching")
             StatusBarManager.shared.setupStatusBar()
+            
+            // Setup OCR quick notification listeners
+            self.setupOCRQuickNotificationListeners()
+        }
+    }
+    
+    private func setupOCRQuickNotificationListeners() {
+        // Listen for OCR quick notification request
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ShowQuickNotificationForOCR"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let userInfo = notification.userInfo else { return }
+            
+            let sourceText = userInfo["sourceText"] as? String ?? ""
+            let sourceLang = userInfo["sourceLang"] as? String ?? ""
+            let targetLang = userInfo["targetLang"] as? String ?? ""
+            let targetLanguageCode = userInfo["targetLanguageCode"] as? String ?? ""
+            
+            self?.showQuickNotification(
+                sourceText: sourceText,
+                sourceLang: sourceLang,
+                targetLang: targetLang,
+                targetLanguageCode: targetLanguageCode
+            )
+        }
+        
+        // Listen for translation update
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("UpdateQuickNotificationTranslation"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            let translatedText = notification.object as? String ?? ""
+            self?.updateQuickNotificationTranslation(translatedText)
         }
     }
     
@@ -202,6 +238,31 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         print("✅ HotKeyService is now ACTIVE - listening for Cmd+Ctrl+C\n")
     }
     
+    private var quickNotificationWindow: QuickNotificationWindow?
+    
+    private func showQuickNotification(sourceText: String, sourceLang: String, targetLang: String, targetLanguageCode: String) {
+        print("📢 Showing quick notification immediately")
+        
+        // Create new window (old one will auto deallocate after close)
+        let newWindow = QuickNotificationWindow(
+            sourceText: sourceText,
+            sourceLang: sourceLang,
+            targetLang: targetLang,
+            targetLanguageCode: targetLanguageCode
+        )
+        
+        // Keep reference to new window
+        quickNotificationWindow = newWindow
+        quickNotificationWindow?.show()
+        
+        // Auto-close after 10 seconds
+        newWindow.autoClose(after: 10.0)
+    }
+    
+    private func updateQuickNotificationTranslation(_ translatedText: String) {
+        quickNotificationWindow?.updateTranslation(translatedText)
+    }
+    
     private func startEscapeKeyListener() {
         print("🎯 EscapeKeyService setup starting...")
         
@@ -211,12 +272,44 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             print("📝 Selected text: \(selectedText)\n")
             
             DispatchQueue.main.async {
-                // Set text to translator and show popover
-                TranslatorViewModel.shared.setTextFromHotkey(selectedText)
+                let useQuickNotification = UserDefaults.standard.bool(forKey: "SnapTranslateUseQuickNotification")
                 
-                // Show translator popover from menu bar
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    StatusBarManager.shared.showTranslatorPopover()
+                if useQuickNotification && selectedText.count < 150 {
+                    // Show quick notification for short text (immediately)
+                    print("📢 Using quick notification for short text (\(selectedText.count) chars)")
+                    
+                    let viewModel = TranslatorViewModel.shared
+                    let sourceLangName = viewModel.getLanguageName(viewModel.sourceLanguage)
+                    let targetLangName = viewModel.getLanguageName(viewModel.targetLanguage)
+                    
+                    // Show notification immediately (with loading state)
+                    self.showQuickNotification(
+                        sourceText: selectedText,
+                        sourceLang: sourceLangName,
+                        targetLang: targetLangName,
+                        targetLanguageCode: viewModel.targetLanguage
+                    )
+                    
+                    // Translate in background
+                    Task {
+                        let translated = await TranslationService.shared.translate(selectedText, from: viewModel.sourceLanguage, to: viewModel.targetLanguage)
+                        
+                        DispatchQueue.main.async {
+                            // Update notification with translation
+                            self.updateQuickNotificationTranslation(translated)
+                        }
+                    }
+                } else {
+                    // Show full popover
+                    print("📝 Using popover for \(useQuickNotification ? "long" : "disabled quick notification") text")
+                    
+                    // Set text to translator and show popover
+                    TranslatorViewModel.shared.setTextFromHotkey(selectedText)
+                    
+                    // Show translator popover from menu bar
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        StatusBarManager.shared.showTranslatorPopover()
+                    }
                 }
             }
         }

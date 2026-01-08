@@ -165,6 +165,28 @@ class TranslatorViewModel: ObservableObject {
         isFromHotkey = true
         sourceText = text
     }
+    
+    func getLanguageName(_ code: String) -> String {
+        // Return localized language name
+        let languageNames: [String: String] = [
+            "en": "English",
+            "vi": "Vietnamese",
+            "zh": "Chinese",
+            "zh-Hans": "Chinese (Simplified)",
+            "zh-Hant": "Chinese (Traditional)",
+            "es": "Spanish",
+            "fr": "French",
+            "de": "German",
+            "ja": "Japanese",
+            "ko": "Korean",
+            "pt": "Portuguese",
+            "ru": "Russian",
+            "ar": "Arabic",
+            "th": "Thai",
+            "id": "Indonesian"
+        ]
+        return languageNames[code] ?? code
+    }
 }
 
 struct TranslatorPopoverView: View {

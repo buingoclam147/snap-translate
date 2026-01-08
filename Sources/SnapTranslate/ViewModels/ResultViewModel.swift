@@ -76,13 +76,70 @@ class ResultViewModel: ObservableObject {
                     print("📄 Extracted text preview: \(text.prefix(100))...")
                 }
                 
-                // Trigger translation
-                self?.translateExtractedText(text)
-                
-                // Show result window
-                self?.showResultWindow()
+                // Check if should use quick notification
+                let useQuickNotification = UserDefaults.standard.bool(forKey: "SnapTranslateUseQuickNotification")
+                if useQuickNotification && text.count < 150 {
+                    // Show quick notification instead of popover
+                    self?.showQuickNotificationForOCR(text: text)
+                } else {
+                    // Show result window (popover)
+                    self?.translateExtractedText(text)
+                    self?.showResultWindow()
+                }
             }
         }
+    }
+    
+    private func showQuickNotificationForOCR(text: String) {
+        print("📢 Using quick notification for OCR (short text: \(text.count) chars)")
+        
+        let sourceLanguageName = "English"
+        let targetLanguageName = getLanguageName(selectedLanguage)
+        
+        // Show notification immediately (with loading state)
+        NotificationCenter.default.post(
+            name: NSNotification.Name("ShowQuickNotificationForOCR"),
+            object: nil,
+            userInfo: [
+                "sourceText": text,
+                "sourceLang": sourceLanguageName,
+                "targetLang": targetLanguageName,
+                "targetLanguageCode": selectedLanguage
+            ]
+        )
+        
+        // Translate in background
+        Task {
+            let translated = await TranslationService.shared.translate(text, from: "en", to: selectedLanguage)
+            
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("UpdateQuickNotificationTranslation"),
+                    object: translated
+                )
+            }
+        }
+    }
+    
+    private func getLanguageName(_ code: String) -> String {
+        let languageNames: [String: String] = [
+            "en": "English",
+            "vi": "Vietnamese",
+            "zh": "Chinese",
+            "zh-Hans": "Chinese (Simplified)",
+            "zh-Hant": "Chinese (Traditional)",
+            "es": "Spanish",
+            "fr": "French",
+            "de": "German",
+            "ja": "Japanese",
+            "ko": "Korean",
+            "pt": "Portuguese",
+            "ru": "Russian",
+            "ar": "Arabic",
+            "th": "Thai",
+            "id": "Indonesian"
+        ]
+        return languageNames[code] ?? code
     }
     
     // Translate extracted text to selected language
