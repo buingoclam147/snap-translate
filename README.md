@@ -45,38 +45,91 @@ cd snap-translate
 
 ---
 
-## 🚀 Features
+## 🚀 Core Features
 
-### 🖼️ Screenshot Capture + OCR
-- Press `Cmd + Ctrl + C` to capture any region
-- Automatic text extraction (English + Vietnamese)
-- Confidence score for each text block
-- One-click cancellation with ESC
+### 📸 Screenshot Capture + OCR
+- Press `Cmd + Ctrl + C` to capture any region on screen
+- Automatic text extraction (supports English + Vietnamese)
+- High-accuracy character recognition
+- Confidence scoring for each text block
+- One-click cancellation with `ESC` key
+- Instant display in Translator popover
 
 ### 🌐 Instant Translation
-- **4 Smart Translation Engines:**
-  - MyMemory (most stable, free)
-  - LibreTranslate (open-source)
+- **4 Smart Translation Engines with Auto-Fallback:**
+  - MyMemory (most stable, free, recommended)
+  - LibreTranslate (open-source, self-hosted option)
   - Google Translate (fast, reverse-engineered)
-  - DeepL (highest quality)
+  - DeepL (highest quality, requires API key)
 - Automatic provider fallback on failure
 - 3 automatic retry attempts
 - Supports 15+ languages
+- Real-time translation (2s debounce)
 
-### 🔊 Text-to-Speech
-- Native macOS speech synthesis
-- 15+ language voices
-- Adjustable speech speed
+### 🔊 Text-to-Speech (Multiple Provider Support)
+- Native macOS speech synthesis (AVSpeechSynthesizer)
+- 15+ language voices with native pronunciation
+- Adjustable speech speed (optimized rates for words vs. sentences)
+- Single-word optimization for dictionary-style pronunciation
+- Full-sentence optimization for natural speech
 - Play/Pause/Stop controls
 
-### ⚙️ Smart Features
-- Real-time translation (2s debounce)
+### ✨ Translator Popover (Main Interface)
+- Real-time translation as you type
 - Language swap in one click
-- Copy to clipboard
-- Paste from clipboard
-- Translate selected text (Cmd+Shift+X)
-- Custom hotkey support
+- Copy translation to clipboard
+- Paste text from clipboard
+- Manual text input
 - Auto language detection
+- Translation history display
+- Speaker icon for text-to-speech
+- Custom language selection
+- Visual source/target language indicators
+
+### ⚙️ Smart Features
+- **Translate Selected Text** - Press `Cmd + Shift + X` on any highlighted text
+- **Quick Notification** - Toast-style notification for fast translations
+- **Auto Language Detection** - Automatically detects source language
+- **Custom Hotkeys** - Customize all hotkeys in settings
+- **Language Memory** - App remembers your last used languages
+- **Persistent Settings** - All preferences saved automatically
+- **Dark Mode Support** - Full light/dark theme support
+
+---
+
+## 🔧 Setup & Permissions
+
+TSnap is designed for Apple Silicon. To unlock its full potential, grant the following permissions:
+
+### 🎬 Screen & System Recording (Required)
+
+**Purpose:** Needed for screenshot capture and OCR text extraction.
+
+**How to Enable:**
+1. Open **System Settings**
+2. Navigate to **Privacy & Security** (left sidebar)
+3. Scroll down and click **Screen & System Audio Recording**
+4. Click the **+ (plus)** button
+5. Select **TSnap** from Applications folder
+6. Click **Open**
+
+**Alternative:** When you first use the capture feature (`Cmd + Ctrl + C`), macOS will prompt you automatically.
+
+**Polling Timeout:** If you don't grant permission within 3 minutes, you'll need to manually enable it.
+
+### ⌨️ Accessibility Access (Required for Selected Text Translation)
+
+**Purpose:** Needed for `Cmd + Shift + X` hotkey to detect text you've highlighted in other apps.
+
+**How to Enable:**
+1. Open **System Settings**
+2. Navigate to **Privacy & Security** (left sidebar)
+3. Scroll down and click **Accessibility**
+4. Click the **+ (plus)** button
+5. Select **TSnap** from Applications folder
+6. Click **Open**
+
+**Note:** Without this permission, `Cmd + Shift + X` won't work, but you can still use `Cmd + Ctrl + C` to capture screenshots.
 
 ---
 
@@ -86,24 +139,27 @@ cd snap-translate
 ```
 1. Press Cmd + Ctrl + C
 2. Drag to select area with text
-3. Text appears in Translator
+3. Text appears in Translator popover
 4. Result auto-translates
-5. Click Copy or Speak
+5. Click speaker icon to hear pronunciation
+6. Click copy button to copy to clipboard
 ```
 
 ### Example 2: Translate Selected Text
 ```
-1. Select any text on screen
+1. Select any text on screen in ANY app
 2. Press Cmd + Shift + X
-3. Translation appears instantly
+3. Translation appears in quick notification (or popover)
+4. Click speaker icon or close notification
 ```
 
-### Example 3: Manual Translation
+### Example 3: Manual Translation via Translator
 ```
 1. Click TSnap icon on menu bar
-2. Type or paste text
+2. Type or paste text in input field
 3. Choose source/target language
-4. Real-time translation appears
+4. Real-time translation appears instantly
+5. Use speaker or copy as needed
 ```
 
 ---
@@ -113,11 +169,12 @@ cd snap-translate
 | Requirement | Details |
 |-------------|---------|
 | **OS** | macOS 12.0 or later |
+| **Processor** | Apple Silicon (recommended) |
 | **RAM** | 50-100 MB |
-| **Disk** | ~20 MB |
-| **Screen Recording** | Required (auto-requested on first launch) |
-| **Accessibility** | NOT required (uses Carbon API) |
-| **Internet** | Public endpoints only |
+| **Disk Space** | ~20 MB |
+| **Screen Recording** | Required (for screenshot capture) |
+| **Accessibility** | Required (for `Cmd + Shift + X`) |
+| **Internet** | Required for translation APIs |
 
 ---
 
@@ -150,10 +207,9 @@ When you open TSnap for the first time:
    xattr -d com.apple.quarantine /Applications/TSnap.app
    ```
 
-3. **Screen Recording Permission**
-   - First time you use capture, you'll be prompted
-   - Grant permission in: System Settings → Privacy & Security → Screen & System Audio Recording
-   - Polling timeout: 3 minutes
+3. **Permission Prompts**
+   - Screen Recording: Grant when prompted or set manually (see Setup & Permissions)
+   - Accessibility: Grant when prompted or set manually (see Setup & Permissions)
 
 4. **Done!**
    - All hotkeys now work
@@ -188,26 +244,35 @@ When you open TSnap for the first time:
 ```
 snap-translate/
 ├── Sources/SnapTranslate/
-│   ├── App/              # App entry point
-│   ├── Services/         # Backend logic
+│   ├── App/              # App entry point & delegate
+│   ├── Services/         # Backend services
+│   │   ├── TranslationService.swift
+│   │   ├── OCRService.swift
+│   │   ├── CaptureService.swift
+│   │   ├── SpeechService.swift
+│   │   ├── HotKeyService.swift
+│   │   └── EscapeKeyService.swift
 │   ├── ViewModels/       # State management
 │   ├── Views/            # UI components
+│   │   ├── TranslatorPopoverView.swift
+│   │   ├── ResultPopoverView.swift
+│   │   └── QuickNotificationView.swift
+│   ├── Assets.xcassets/  # Images & icons
 │   └── Utilities/        # Helper functions
 ├── run-debug.sh          # Development script
 ├── build-release.sh      # Release script
 ├── Package.swift         # Swift Package manifest
-├── FEATURES.md           # Detailed features (English)
-├── APP_FEATURES.md       # Detailed features (Vietnamese)
-└── README.md             # This file
+├── README.md             # This file
+└── FEATURES.md           # Detailed documentation
 ```
 
 ### Available Services
-- **TranslationService** - Translation with retry logic
-- **OCRService** - Text extraction from images
-- **CaptureService** - Screen capture
-- **SpeechService** - Text-to-speech
-- **HotKeyService** - Global hotkey listener
-- **EscapeKeyService** - ESC key & translate hotkey
+- **TranslationService** - Translation with retry logic & provider fallback
+- **OCRService** - Text extraction from images using Vision Framework
+- **CaptureService** - Screen capture with region selection
+- **SpeechService** - Text-to-speech with multiple language support
+- **HotKeyService** - Global hotkey listener (Carbon API)
+- **EscapeKeyService** - ESC key & translate hotkey detection
 
 ---
 
@@ -219,21 +284,24 @@ snap-translate/
 - No data collection
 - 100% client-side processing
 - Public API endpoints only
+- Open-source & verifiable
 
 ✅ **Permission Transparency:**
 | Permission | Required | Why |
 |-----------|----------|-----|
-| Screen Recording | Yes | Capture screenshots |
-| Accessibility | No | Not needed - uses Carbon API |
-| Internet | No | System-level only |
+| Screen Recording | Yes | Capture screenshots & OCR |
+| Accessibility | Yes | Detect selected text (Cmd+Shift+X) |
+| Internet | Yes | Translation APIs |
 | Microphone | No | Speaker output only |
 | Camera | No | Not used |
+| Contacts | No | Not used |
+| Files | No | Not used |
 
 ✅ **API Security:**
-- MyMemory: Free public API
-- LibreTranslate: Open-source service
-- Google Translate: Reverse-engineered (no official API)
-- DeepL: Optional API key (user-provided)
+- **MyMemory**: Free public API, no authentication needed
+- **LibreTranslate**: Open-source service, can be self-hosted
+- **Google Translate**: Reverse-engineered API (use at your own discretion)
+- **DeepL**: Optional premium API key (user-provided, encrypted in UserDefaults)
 
 ---
 
@@ -242,10 +310,11 @@ snap-translate/
 | Metric | Value |
 |--------|-------|
 | OCR Processing | < 500ms |
-| Translation | 500ms - 2s |
+| Translation | 500ms - 2s (depends on provider) |
 | UI Response | < 100ms |
 | Memory Usage | 50-100 MB |
 | CPU (Idle) | < 5% |
+| App Launch | ~1-2 seconds |
 
 ---
 
@@ -253,16 +322,24 @@ snap-translate/
 
 ### Change Hotkeys
 
-1. Open TSnap
-2. Click ⚙️ (Settings) in popover
-3. Customize OCR hotkey
-4. Settings auto-saved
+1. Open TSnap (click menu bar icon)
+2. Click **⚙️ Settings** button in popover
+3. Customize your hotkeys
+4. Settings auto-saved to UserDefaults
 
 ### Change Languages
 
-Translator automatically remembers your language choices:
+TSnap automatically remembers your language choices:
 - Source language: Default English
 - Target language: Default Vietnamese
+- Changes persist across sessions
+
+### Translation Providers
+
+You can configure which translation providers to use:
+1. Open Settings
+2. Select preferred providers
+3. Enable/disable as needed
 
 ---
 
@@ -270,12 +347,13 @@ Translator automatically remembers your language choices:
 
 | File | Purpose |
 |------|---------|
-| `FEATURES.md` | Detailed English feature documentation |
-| `APP_FEATURES.md` | Detailed Vietnamese feature documentation |
-| `README.md` | This file - quick start & overview |
-| `run-debug.sh` | Development build & run |
+| `README.md` | Quick start & overview (this file) |
+| `FEATURES.md` | Detailed documentation |
+| `run-debug.sh` | Development build & run script |
 | `build-release.sh` | Production release builder |
 | `Package.swift` | Swift Package definition |
+| `XCODE_SETUP.md` | Xcode project setup guide |
+| `DEEPL_API_SETUP.md` | DeepL API configuration |
 
 ---
 
@@ -292,6 +370,7 @@ Your support helps:
 - Add new translation providers
 - Improve OCR accuracy
 - Expand language support
+- Add new features
 - Maintain free & open development
 
 ### 🐛 Bug Reports & Features
@@ -313,38 +392,47 @@ TSnap is licensed under the MIT License - see [LICENSE](LICENSE) file for detail
 ## 📊 Statistics
 
 - **Supported Languages**: 15+
-- **Translation Providers**: 4
-- **Code Size**: ~2000 lines of Swift
+- **Translation Providers**: 4 (MyMemory, LibreTranslate, Google, DeepL)
+- **TTS Languages**: 15+
+- **Code Size**: ~2000+ lines of Swift
 - **Build Time**: ~30 seconds
 - **App Size**: ~20 MB
+- **Open Source**: Yes
+- **Subscription Required**: No
 
 ---
 
 ## ❓ FAQ
 
 ### Q: Does TSnap require internet?
-**A:** No, but translation providers do. You can use offline by typing instead of capturing.
+**A:** Yes, translation requires internet connection. Screenshot capture and basic UI work offline.
 
 ### Q: Is my data safe?
-**A:** Yes! TSnap is 100% client-side. No data is stored or sent anywhere except to public translation APIs.
+**A:** Yes! TSnap is 100% client-side. No data is stored or sent anywhere except to public translation APIs. All processing happens on your device.
 
 ### Q: Can I use custom hotkeys?
-**A:** Yes! Open Settings (⚙️) in the popover to customize hotkeys.
+**A:** Yes! Open Settings (⚙️) in the popover to customize all hotkeys.
 
 ### Q: What languages are supported?
-**A:** Translation: 15+ languages. OCR: English & Vietnamese.
+**A:** Translation: 15+ languages (English, Vietnamese, Spanish, French, German, Italian, Portuguese, Russian, Japanese, Korean, Chinese, Thai, Arabic, Hindi, Indonesian). OCR: English & Vietnamese.
 
 ### Q: Why is the app "damaged"?
 **A:** The app isn't signed with Apple's developer certificate. This is normal for unsigned apps. See "First Time Launch" section above.
 
 ### Q: Can I use multiple translation providers?
-**A:** Yes! TSnap automatically falls back to other providers if one fails.
+**A:** Yes! TSnap automatically falls back to other providers if one fails, ensuring translation always works.
 
 ### Q: How do I uninstall TSnap?
 **A:** Drag TSnap.app to Trash, or run: `rm -rf /Applications/TSnap.app`
 
 ### Q: Is there a paid version?
 **A:** No, TSnap is completely free and open-source.
+
+### Q: Does TSnap work with DeepL?
+**A:** Yes! You can configure a DeepL API key in settings for higher quality translations.
+
+### Q: Why does text-to-speech sometimes sound odd?
+**A:** TSnap uses macOS native voices. Quality varies by language. You can adjust speech speed in settings.
 
 ---
 
@@ -355,17 +443,21 @@ TSnap is licensed under the MIT License - see [LICENSE](LICENSE) file for detail
 - **Backend**: Async/await + GCD
 - **Networking**: URLSession
 - **OCR**: Vision Framework
-- **TTS**: AVFoundation
+- **TTS**: AVFoundation (AVSpeechSynthesizer)
 - **Hotkeys**: Carbon API
 - **Storage**: UserDefaults
+- **Pattern**: MVVM + Services
 
 ### Translation Providers
-| Provider | Limit | Latency | Quality |
-|----------|-------|---------|---------|
-| MyMemory | 500 chars | 300-500ms | Good |
-| LibreTranslate | 50,000 chars | 500ms-1s | Good |
-| Google | 5,000 chars | 200-400ms | Excellent |
-| DeepL | 50,000 chars | 500ms-2s | Excellent |
+| Provider | Limit | Latency | Quality | Auth |
+|----------|-------|---------|---------|------|
+| MyMemory | 500 chars | 300-500ms | Good | None |
+| LibreTranslate | 50,000 chars | 500ms-1s | Good | Optional |
+| Google | 5,000 chars | 200-400ms | Excellent | None |
+| DeepL | 50,000 chars | 500ms-2s | Excellent | API Key |
+
+### Supported Languages
+English, Vietnamese, Spanish, French, German, Italian, Portuguese, Russian, Japanese, Korean, Chinese (Simplified), Thai, Arabic, Hindi, Indonesian
 
 ---
 
@@ -376,6 +468,7 @@ TSnap is licensed under the MIT License - see [LICENSE](LICENSE) file for detail
 - [SwiftUI](https://developer.apple.com/swiftui/)
 - [AppKit](https://developer.apple.com/appkit/)
 - [Vision Framework](https://developer.apple.com/vision/)
+- [AVFoundation](https://developer.apple.com/avfoundation/)
 
 ### Translation Providers
 - [MyMemory Translated](https://mymemory.translated.net/)
@@ -398,22 +491,24 @@ TSnap is licensed under the MIT License - see [LICENSE](LICENSE) file for detail
 ## 📈 Version History
 
 ### v1.0.1 (Current)
-- Initial public release
-- 4 translation providers
+- Screenshot capture with OCR (English + Vietnamese)
+- 4 translation providers with auto-fallback
 - 15+ language support
-- Text-to-speech
+- Text-to-speech with optimized rates
+- Quick notification toast
+- Selected text translation (Cmd+Shift+X)
 - Custom hotkeys
-- Full privacy-focused
+- Full privacy-focused, no tracking
 
 ---
 
 ## ⚖️ Disclaimer
 
 TSnap uses public translation APIs. Usage is subject to each provider's terms of service:
-- MyMemory: [Terms](https://mymemory.translated.net/doc/spec)
-- LibreTranslate: [Terms](https://github.com/LibreTranslate/LibreTranslate)
-- Google: Reverse-engineered, use at your own discretion
-- DeepL: Requires valid API key
+- **MyMemory**: [Terms](https://mymemory.translated.net/doc/spec)
+- **LibreTranslate**: [Terms](https://github.com/LibreTranslate/LibreTranslate)
+- **Google**: Reverse-engineered API, use at your own discretion
+- **DeepL**: Requires valid API key and complies with [DeepL Terms](https://www.deepl.com/en/privacy)
 
 ---
 

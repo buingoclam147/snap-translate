@@ -5,6 +5,7 @@ struct HotKeySettingsView: View {
     @State private var ocrHotkey = ""
     @State private var translateHotkey = ""
     @State private var prioritizeChineseOCR = false
+    @State private var useQuickNotification = false
     @State private var isRecordingOCR = false
     @State private var isRecordingTranslate = false
     @State private var recordingText = ""
@@ -89,6 +90,27 @@ struct HotKeySettingsView: View {
             
             Divider()
             
+            // Translation Options Section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Translation Options")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Toggle("Quick Notification for Short Content", isOn: $useQuickNotification)
+                    .font(.system(size: 11))
+                    .onChange(of: useQuickNotification) { newValue in
+                        UserDefaults.standard.set(newValue, forKey: "SnapTranslateUseQuickNotification")
+                        print("🔔 Quick notification toggled: \(newValue)")
+                    }
+                
+                Text("Show floating notification instead of popover for short translations (under 150 characters)")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                    .lineLimit(3)
+            }
+            
+            Divider()
+            
             // OCR Options Section
             VStack(alignment: .leading, spacing: 8) {
                 Text("OCR Options")
@@ -137,7 +159,7 @@ struct HotKeySettingsView: View {
             .tint(.red)
         }
         .padding(12)
-        .frame(width: 320, height: 420)
+        .frame(width: 320, height: 500)
         .onAppear(perform: loadHotkeys)
         .onDisappear(perform: stopRecording)
     }
@@ -309,6 +331,7 @@ struct HotKeySettingsView: View {
         ocrHotkey = HotKeyManager.shared.getOCRHotKey()
         translateHotkey = HotKeyManager.shared.getTranslateHotKey()
         prioritizeChineseOCR = HotKeyManager.shared.getPrioritizeChineseOCR()
+        useQuickNotification = UserDefaults.standard.bool(forKey: "SnapTranslateUseQuickNotification")
     }
     
     private func updateTranslateHotkey(_ hotKey: String) {

@@ -1,4 +1,5 @@
 import Foundation
+import ObjectiveC
 #if os(macOS)
 import AppKit
 import AVFoundation
@@ -34,6 +35,13 @@ class SpeechService: NSObject, AVSpeechSynthesizerDelegate {
         print("✅ SpeechService initialized - Text-to-Speech ready")
     }
     
+    /// Check if text is a single word
+    private func isSingleWord(_ text: String) -> Bool {
+        let trimmedText = text.trimmingCharacters(in: .whitespaces)
+        let words = trimmedText.split(separator: " ", omittingEmptySubsequences: true)
+        return words.count == 1
+    }
+    
     /// Speak text in specified language
     func speak(_ text: String, languageCode: String, rate: Float = 0.5) {
         guard !text.isEmpty else { return }
@@ -41,18 +49,25 @@ class SpeechService: NSObject, AVSpeechSynthesizerDelegate {
         // Stop current speech if any
         synthesizer.stopSpeaking(at: .immediate)
         
+        // Decide speaking rate based on text length
+        let isSingle = isSingleWord(text)
+        let speakRate: Float = isSingle ? 0.4 : 0.45  // Slower for better clarity
+        
+        speakWithSystem(text, languageCode: languageCode, rate: speakRate)
+    }
+    
+    /// Speak using system AVSpeechSynthesizer
+    private func speakWithSystem(_ text: String, languageCode: String, rate: Float = 0.5) {
         let utterance = AVSpeechUtterance(string: text)
         
         // Set language
         if let localeString = supportedLanguages[languageCode]?.locale {
             utterance.voice = AVSpeechSynthesisVoice(language: localeString)
         } else {
-            // Fallback to English
             utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
         }
         
-        // Configure speech
-        utterance.rate = rate  // 0.0 = slowest, 1.0 = fastest, 0.5 = normal
+        utterance.rate = rate
         utterance.pitchMultiplier = 1.0
         utterance.volume = 1.0
         
