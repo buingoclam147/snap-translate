@@ -4,6 +4,7 @@ import AppKit
 struct HotKeySettingsView: View {
     @State private var ocrHotkey = ""
     @State private var translateHotkey = ""
+    @State private var prioritizeChineseOCR = false
     @State private var isRecordingOCR = false
     @State private var isRecordingTranslate = false
     @State private var recordingText = ""
@@ -88,6 +89,33 @@ struct HotKeySettingsView: View {
             
             Divider()
             
+            // OCR Options Section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("OCR Options")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Toggle("Prioritize Chinese Recognition", isOn: $prioritizeChineseOCR)
+                    .font(.system(size: 11))
+                    .onChange(of: prioritizeChineseOCR) { newValue in
+                        HotKeyManager.shared.savePrioritizeChineseOCR(newValue)
+                        print("🇨🇳 Chinese prioritization toggled: \(newValue)")
+                        
+                        // Auto-set languages when prioritization is enabled
+                        if newValue {
+                            TranslatorViewModel.shared.setPrioritizeChineseLanguages()
+                            print("🇨🇳 Source language set to Chinese, target set to English")
+                        }
+                    }
+                
+                Text("When enabled, OCR will prioritize Chinese (Simplified & Traditional) character recognition")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                    .lineLimit(3)
+            }
+            
+            Divider()
+            
             // Reset Hotkey button
             Button(action: resetHotkeys) {
                 Label("Reset to Default", systemImage: "arrow.counterclockwise")
@@ -109,7 +137,7 @@ struct HotKeySettingsView: View {
             .tint(.red)
         }
         .padding(12)
-        .frame(width: 320, height: 340)
+        .frame(width: 320, height: 420)
         .onAppear(perform: loadHotkeys)
         .onDisappear(perform: stopRecording)
     }
@@ -280,6 +308,7 @@ struct HotKeySettingsView: View {
     private func loadHotkeys() {
         ocrHotkey = HotKeyManager.shared.getOCRHotKey()
         translateHotkey = HotKeyManager.shared.getTranslateHotKey()
+        prioritizeChineseOCR = HotKeyManager.shared.getPrioritizeChineseOCR()
     }
     
     private func updateTranslateHotkey(_ hotKey: String) {

@@ -21,7 +21,13 @@ class OCRService {
         
         let request = VNRecognizeTextRequest()
         // Support English, Vietnamese, Chinese (Simplified & Traditional)
-        request.recognitionLanguages = ["en", "vi", "zh", "zh-Hans", "zh-Hant"]
+        // Language order depends on user preference
+        let prioritizeChineseOCR = UserDefaults.standard.bool(forKey: "SnapTranslatePrioritizeChineseOCR")
+        if prioritizeChineseOCR {
+            request.recognitionLanguages = ["zh-Hans", "zh-Hant", "en", "vi", "zh"]
+        } else {
+            request.recognitionLanguages = ["en", "vi", "zh-Hans", "zh-Hant", "zh"]
+        }
         request.usesLanguageCorrection = true  // Better accuracy
         
         // Set revision for better results
