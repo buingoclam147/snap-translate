@@ -20,8 +20,8 @@ class OCRService {
         }
         
         let request = VNRecognizeTextRequest()
-        // Support English and Vietnamese
-        request.recognitionLanguages = ["en", "vi"]
+        // Support English, Vietnamese, Chinese (Simplified & Traditional)
+        request.recognitionLanguages = ["en", "vi", "zh", "zh-Hans", "zh-Hant"]
         request.usesLanguageCorrection = true  // Better accuracy
         
         // Set revision for better results
@@ -51,7 +51,7 @@ class OCRService {
             
             let extractedText = recognizedStrings.joined(separator: "\n")
             print("✅ Vision OCR completed: extracted \(recognizedStrings.count) text blocks")
-            print("📊 Languages: English + Vietnamese supported")
+            print("📊 Languages: English, Vietnamese, Chinese (Simplified & Traditional) supported")
             return extractedText
         } catch {
             print("❌ OCR error: \(error.localizedDescription)")
