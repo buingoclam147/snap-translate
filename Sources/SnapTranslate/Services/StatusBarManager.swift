@@ -94,6 +94,8 @@ class StatusBarManager {
     }
     
     private var translatorPopover: NSPopover?
+    private var isPopoverVisible: Bool = false
+    private var autoCloseTimer: Timer?
     
     @objc private func buttonClicked() {
         showTranslatorPopover()
@@ -103,36 +105,47 @@ class StatusBarManager {
         print("📝 Opening translator popover")
         guard let button = statusItem?.button else { return }
         
-        translatorPopover = NSPopover()
-        translatorPopover?.contentViewController = NSHostingController(
-            rootView: TranslatorPopoverView(
-                onClose: {
-                    self.translatorPopover?.performClose(nil)
-                },
-                onOCRTapped: {
-                    print("🎯 OCR tapped - hiding popover for capture")
-                    // Hide translator popover before capturing
-                    self.translatorPopover?.performClose(nil)
-                    
-                    // Start capture
-                    CaptureViewModel.shared.startCapture { image in
-                        print("📸 Capture completed - showing popover again")
-                        // Set captured image directly to translator view model
-                        TranslatorViewModel.shared.capturedImage = image
+        // Reuse existing popover if it's already visible
+        if isPopoverVisible && translatorPopover != nil {
+            print("♻️ Reusing existing popover")
+            translatorPopover?.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        } else {
+            print("🆕 Creating new popover")
+            translatorPopover = NSPopover()
+            translatorPopover?.contentViewController = NSHostingController(
+                rootView: TranslatorPopoverView(
+                    onClose: { [weak self] in
+                       self?.isPopoverVisible = false
+                       self?.cancelAutoClose()
+                        self?.translatorPopover?.performClose(nil)
+                    },
+                    onOCRTapped: {
+                        print("🎯 OCR tapped - hiding popover for capture")
+                        // Hide translator popover before capturing
+                        self.isPopoverVisible = false
+                        self.translatorPopover?.performClose(nil)
                         
-                        // Re-show popover after capture
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            self.showTranslatorPopover()
+                        // Start capture
+                        CaptureViewModel.shared.startCapture { image in
+                            print("📸 Capture completed - showing popover again")
+                            // Set captured image directly to translator view model
+                            TranslatorViewModel.shared.capturedImage = image
+                            
+                            // Re-show popover after capture
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                self.showTranslatorPopover()
+                            }
                         }
+                    },
+                    onSupportTapped: {
+                        self.showSupportMenu()
                     }
-                },
-                onSupportTapped: {
-                    self.showSupportMenu()
-                }
+                )
             )
-        )
-        translatorPopover?.behavior = .transient
-        translatorPopover?.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            translatorPopover?.behavior = .transient
+            translatorPopover?.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            isPopoverVisible = true
+        }
     }
     
     private func showSupportMenu() {
@@ -188,6 +201,28 @@ class StatusBarManager {
     @objc private func openSettings() {
         print("⚙️ Opening hotkey settings")
         showHotKeySettingsPopover()
+    }
+    
+    func scheduleAutoClosePopover() {
+        // Cancel existing timer
+        cancelAutoClose()
+        
+        var delay = UserDefaults.standard.double(forKey: "SnapTranslateAutoCloseDelay")
+        if delay == 0 {
+            delay = 10 // Default to 10 seconds
+        }
+        
+        print("⏱️ Scheduling auto-close in \(delay) seconds")
+        autoCloseTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            print("⏱️ Auto-closing popover")
+            self?.isPopoverVisible = false
+            self?.translatorPopover?.performClose(nil)
+        }
+    }
+    
+    private func cancelAutoClose() {
+        autoCloseTimer?.invalidate()
+        autoCloseTimer = nil
     }
     
     func showHotKeySettingsPopover() {

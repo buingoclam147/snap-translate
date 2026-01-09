@@ -5,7 +5,7 @@ struct HotKeySettingsView: View {
     @State private var ocrHotkey = ""
     @State private var translateHotkey = ""
     @State private var prioritizeChineseOCR = false
-    @State private var useQuickNotification = false
+    @State private var autoCloseDelay: Double = 10
     @State private var isRecordingOCR = false
     @State private var isRecordingTranslate = false
     @State private var recordingText = ""
@@ -90,20 +90,29 @@ struct HotKeySettingsView: View {
             
             Divider()
             
-            // Translation Options Section
+            // Popover Options Section
             VStack(alignment: .leading, spacing: 8) {
-                Text("Translation Options")
+                Text("Popover Options")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.secondary)
                 
-                Toggle("Quick Notification for Short Content", isOn: $useQuickNotification)
-                    .font(.system(size: 11))
-                    .onChange(of: useQuickNotification) { newValue in
-                        UserDefaults.standard.set(newValue, forKey: "SnapTranslateUseQuickNotification")
-                        print("🔔 Quick notification toggled: \(newValue)")
-                    }
+                HStack {
+                    Text("Auto-close after (seconds):")
+                        .font(.system(size: 11))
+                    
+                    TextField("", value: $autoCloseDelay, format: .number)
+                        .font(.system(size: 11, design: .monospaced))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
+                        .onChange(of: autoCloseDelay) { newValue in
+                            let clamped = max(1, min(newValue, 3600))
+                            autoCloseDelay = clamped
+                            UserDefaults.standard.set(clamped, forKey: "SnapTranslateAutoCloseDelay")
+                            print("⏱️ Auto-close delay set to: \(clamped) seconds")
+                        }
+                }
                 
-                Text("Show floating notification instead of popover for short translations (under 150 characters)")
+                Text("Enter delay in seconds (1-3600). Popover closes automatically after translation completes.")
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .lineLimit(3)
@@ -331,7 +340,10 @@ struct HotKeySettingsView: View {
         ocrHotkey = HotKeyManager.shared.getOCRHotKey()
         translateHotkey = HotKeyManager.shared.getTranslateHotKey()
         prioritizeChineseOCR = HotKeyManager.shared.getPrioritizeChineseOCR()
-        useQuickNotification = UserDefaults.standard.bool(forKey: "SnapTranslateUseQuickNotification")
+        autoCloseDelay = UserDefaults.standard.double(forKey: "SnapTranslateAutoCloseDelay")
+        if autoCloseDelay == 0 {
+            autoCloseDelay = 10 // Default to 10 seconds
+        }
     }
     
     private func updateTranslateHotkey(_ hotKey: String) {

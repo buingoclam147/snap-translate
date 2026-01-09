@@ -241,26 +241,43 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var quickNotificationWindow: QuickNotificationWindow?
     
     private func showQuickNotification(sourceText: String, sourceLang: String, targetLang: String, targetLanguageCode: String) {
-        print("📢 Showing quick notification immediately")
+        print("📢 Showing quick notification")
         
-        // Create new window (old one will auto deallocate after close)
-        let newWindow = QuickNotificationWindow(
-            sourceText: sourceText,
-            sourceLang: sourceLang,
-            targetLang: targetLang,
-            targetLanguageCode: targetLanguageCode
-        )
-        
-        // Keep reference to new window
-        quickNotificationWindow = newWindow
-        quickNotificationWindow?.show()
-        
-        // Auto-close after 10 seconds
-        newWindow.autoClose(after: 10.0)
+        // Reuse existing window if it's visible, otherwise create new one
+        if let existingWindow = quickNotificationWindow, existingWindow.isVisible {
+            print("♻️ Reusing existing notification window")
+            // Update existing window with new content
+            existingWindow.viewModel?.translatedText = ""
+            existingWindow.viewModel?.isTranslating = true
+            // Cancel any pending auto-close
+            existingWindow.scheduleAutoClose(after: 10.0)
+            existingWindow.show()
+        } else {
+            print("🆕 Creating new notification window")
+            // Create new window if none exists or old one was closed
+            let newWindow = QuickNotificationWindow(
+                sourceText: sourceText,
+                sourceLang: sourceLang,
+                targetLang: targetLang,
+                targetLanguageCode: targetLanguageCode
+            )
+            
+            // Keep reference to new window
+            quickNotificationWindow = newWindow
+            newWindow.show()
+            
+            // Schedule auto-close after 10 seconds
+            newWindow.scheduleAutoClose(after: 10.0)
+        }
     }
     
     private func updateQuickNotificationTranslation(_ translatedText: String) {
-        quickNotificationWindow?.updateTranslation(translatedText)
+        // Only update if window exists and is visible
+        if let window = quickNotificationWindow, window.isVisible {
+            window.updateTranslation(translatedText)
+        } else {
+            print("⚠️ Quick notification window not visible, ignoring translation update")
+        }
     }
     
     private func startEscapeKeyListener() {
@@ -272,44 +289,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             print("📝 Selected text: \(selectedText)\n")
             
             DispatchQueue.main.async {
-                let useQuickNotification = UserDefaults.standard.bool(forKey: "SnapTranslateUseQuickNotification")
+                print("📝 Using popover for translation")
                 
-                if useQuickNotification && selectedText.count < 150 {
-                    // Show quick notification for short text (immediately)
-                    print("📢 Using quick notification for short text (\(selectedText.count) chars)")
-                    
-                    let viewModel = TranslatorViewModel.shared
-                    let sourceLangName = viewModel.getLanguageName(viewModel.sourceLanguage)
-                    let targetLangName = viewModel.getLanguageName(viewModel.targetLanguage)
-                    
-                    // Show notification immediately (with loading state)
-                    self.showQuickNotification(
-                        sourceText: selectedText,
-                        sourceLang: sourceLangName,
-                        targetLang: targetLangName,
-                        targetLanguageCode: viewModel.targetLanguage
-                    )
-                    
-                    // Translate in background
-                    Task {
-                        let translated = await TranslationService.shared.translate(selectedText, from: viewModel.sourceLanguage, to: viewModel.targetLanguage)
-                        
-                        DispatchQueue.main.async {
-                            // Update notification with translation
-                            self.updateQuickNotificationTranslation(translated)
-                        }
-                    }
-                } else {
-                    // Show full popover
-                    print("📝 Using popover for \(useQuickNotification ? "long" : "disabled quick notification") text")
-                    
-                    // Set text to translator and show popover
-                    TranslatorViewModel.shared.setTextFromHotkey(selectedText)
-                    
-                    // Show translator popover from menu bar
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        StatusBarManager.shared.showTranslatorPopover()
-                    }
+                // Set text to translator
+                TranslatorViewModel.shared.setTextFromHotkey(selectedText)
+                
+                // Only show popover if not already visible
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    StatusBarManager.shared.showTranslatorPopover()
                 }
             }
         }

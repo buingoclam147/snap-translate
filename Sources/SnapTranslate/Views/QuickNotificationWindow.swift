@@ -4,6 +4,7 @@ import SwiftUI
 class QuickNotificationWindow: NSWindow {
     var hostingController: NSHostingController<QuickNotificationView>?
     var viewModel: QuickNotificationViewModel?
+    private var autoCloseTimer: Timer?
     
     init(sourceText: String, sourceLang: String, targetLang: String, targetLanguageCode: String) {
         let screen = NSScreen.main ?? NSScreen.screens.first
@@ -43,11 +44,12 @@ class QuickNotificationWindow: NSWindow {
             sourceLang: sourceLang,
             targetLang: targetLang,
             targetLanguageCode: targetLanguageCode,
-            onClose: {
+            onClose: { [weak self] in
                 // Use dispatch to avoid retain cycle
                 DispatchQueue.main.async {
-                    self.orderOut(nil)
-                    self.close()
+                    self?.cancelAutoClose()
+                    self?.orderOut(nil)
+                    self?.close()
                 }
             },
             viewModel: viewModel
@@ -67,19 +69,33 @@ class QuickNotificationWindow: NSWindow {
     }
     
     func updateTranslation(_ translatedText: String) {
+        guard !self.isReleasedWhenClosed else {
+            print("⚠️ Window already closed, ignoring translation update")
+            return
+        }
         viewModel?.translatedText = translatedText
         viewModel?.isTranslating = false
         print("✅ Translation received - updating notification")
     }
     
-    func autoClose(after delay: TimeInterval = 10.0) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+    func scheduleAutoClose(after delay: TimeInterval = 10.0) {
+        // Cancel existing timer
+        cancelAutoClose()
+        
+        // Schedule new auto-close
+        autoCloseTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             self?.orderOut(nil)
             self?.close()
         }
     }
     
+    private func cancelAutoClose() {
+        autoCloseTimer?.invalidate()
+        autoCloseTimer = nil
+    }
+    
     deinit {
+        cancelAutoClose()
         print("🗑️ QuickNotificationWindow deallocated")
     }
 }

@@ -17,8 +17,11 @@
 
 #### Option 1: Download Pre-built App (Recommended for Users)
 ```bash
-# Download the latest release
-curl -L https://download.tsnap.tech/TSnap-1.0.1.dmg -o ~/Downloads/TSnap.dmg
+# Download the latest release from GitHub
+# Visit: https://github.com/buingoclam147/snap-translate/releases
+
+# Or download directly with curl:
+curl -L https://github.com/buingoclam147/snap-translate/releases/download/v2.1.1/TSnap.dmg -o ~/Downloads/TSnap.dmg
 
 # Open DMG and drag TSnap.app to Applications folder
 open ~/Downloads/TSnap.dmg
@@ -88,12 +91,13 @@ cd snap-translate
 
 ### ⚙️ Smart Features
 - **Translate Selected Text** - Press `Cmd + Shift + X` on any highlighted text
-- **Quick Notification** - Toast-style notification for fast translations
 - **Auto Language Detection** - Automatically detects source language
 - **Custom Hotkeys** - Customize all hotkeys in settings
+- **Auto-close Popover** - Set custom auto-close delay (1-3600 seconds, default 10s)
 - **Language Memory** - App remembers your last used languages
 - **Persistent Settings** - All preferences saved automatically
 - **Dark Mode Support** - Full light/dark theme support
+- **Smart Popover Reuse** - Pressing translate hotkey again fills new text instead of opening duplicate window
 
 ---
 
@@ -149,8 +153,9 @@ TSnap is designed for Apple Silicon. To unlock its full potential, grant the fol
 ```
 1. Select any text on screen in ANY app
 2. Press Cmd + Shift + X
-3. Translation appears in quick notification (or popover)
-4. Click speaker icon or close notification
+3. Translation appears in popover
+4. Popover auto-closes after 10 seconds (configurable)
+5. Click speaker icon or copy button as needed
 ```
 
 ### Example 3: Manual Translation via Translator
@@ -324,8 +329,16 @@ snap-translate/
 
 1. Open TSnap (click menu bar icon)
 2. Click **⚙️ Settings** button in popover
-3. Customize your hotkeys
+3. Customize OCR & Translate hotkeys
 4. Settings auto-saved to UserDefaults
+
+### Auto-close Popover
+
+Configure how long the popover stays open after translation completes:
+1. Click **⚙️ Settings** in the popover
+2. Under "Popover Options", enter desired delay in seconds (1-3600)
+3. Default is 10 seconds
+4. Example: Set to 30 for longer reading time, or 3600 to disable auto-close
 
 ### Change Languages
 
@@ -334,12 +347,9 @@ TSnap automatically remembers your language choices:
 - Target language: Default Vietnamese
 - Changes persist across sessions
 
-### Translation Providers
+### Chinese OCR Prioritization
 
-You can configure which translation providers to use:
-1. Open Settings
-2. Select preferred providers
-3. Enable/disable as needed
+Enable in Settings under "OCR Options" to prioritize Chinese character recognition (Simplified & Traditional)
 
 ---
 
@@ -490,14 +500,16 @@ English, Vietnamese, Spanish, French, German, Italian, Portuguese, Russian, Japa
 
 ## 📈 Version History
 
-### v1.0.1 (Current)
+### v2.0+ (Current)
 - Screenshot capture with OCR (English + Vietnamese)
 - 4 translation providers with auto-fallback
 - 15+ language support
 - Text-to-speech with optimized rates
-- Quick notification toast
 - Selected text translation (Cmd+Shift+X)
-- Custom hotkeys
+- Custom hotkeys (OCR & Translate)
+- Configurable auto-close popover (1-3600 seconds)
+- Smart popover reuse (no duplicate windows)
+- Chinese OCR prioritization option
 - Full privacy-focused, no tracking
 
 ---

@@ -484,6 +484,13 @@ struct TranslatorPopoverView: View {
                 }
             }
         }
+        .onChange(of: viewModel.isTranslating) { newValue in
+            // When translation completes (isTranslating becomes false), schedule auto-close
+            if !newValue && !viewModel.translatedText.isEmpty {
+                print("✅ Translation completed - scheduling auto-close")
+                StatusBarManager.shared.scheduleAutoClosePopover()
+            }
+        }
         .onDisappear {
             print("\n" + String(repeating: "-", count: 70))
             print("📝 TranslatorPopoverView.onDisappear() - Cleaning up ESC listener")
